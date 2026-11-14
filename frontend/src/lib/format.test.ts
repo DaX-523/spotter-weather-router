@@ -43,9 +43,16 @@ describe("formatDuration", () => {
 });
 
 describe("formatClock", () => {
-  it("shows the weekday, local time and zone", () => {
-    expect(formatClock("2026-11-15T06:00:00Z")).toBe("Sun, 12:00 AM CST");
-  });
+  it.each([
+    ["America/Chicago", "Sun, 12:00 AM CST"],
+    ["America/Denver", "Sat, 11:00 PM MST"],
+    ["America/New_York", "Sun, 1:00 AM EST"],
+  ])(
+    "shows the weekday and local time in %s, with the zone",
+    (zone, expected) => {
+      expect(formatClock("2026-11-15T06:00:00Z", zone)).toBe(expected);
+    },
+  );
 });
 
 // As precise as the forecast, like the backend's hazard reasons, so a value just under a risk

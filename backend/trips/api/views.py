@@ -11,6 +11,7 @@ from trips.api.serializers import (
     TripPlanRequestSerializer,
     TripPlanSerializer,
 )
+from trips.services.places import suggest_places
 from trips.services.plan_trip import plan_trip
 
 
@@ -23,6 +24,7 @@ class TripPlansView(APIView):
             serializer.trip_request(),
             routing=providers.routing,
             weather=providers.weather,
+            zones=providers.time_zones,
             now=providers.clock(),
         )
         return Response(TripPlanSerializer(plan).data)
@@ -32,5 +34,8 @@ class PlacesView(APIView):
     def get(self, request: Request) -> Response:
         serializer = PlaceQuerySerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        places = wiring.providers().place_search.search(serializer.validated_data["query"])
+        providers = wiring.providers()
+        places = suggest_places(
+            serializer.validated_data["query"], providers.place_search, providers.time_zones
+        )
         return Response(PlaceSerializer(places, many=True).data)

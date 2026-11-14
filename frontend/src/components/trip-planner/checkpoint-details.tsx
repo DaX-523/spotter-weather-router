@@ -7,11 +7,18 @@ import {
   formatWind,
 } from "@/lib/format";
 
-/** What the driver meets at one checkpoint: shown in the map's popup. */
-export function CheckpointDetails({ checkpoint }: { checkpoint: Checkpoint }) {
+/** What the driver meets at one checkpoint: shown in the map's popup. The origin and
+ * destination are titled by name instead of mile marker. */
+export function CheckpointDetails({
+  checkpoint,
+  title,
+}: {
+  checkpoint: Checkpoint;
+  title?: string;
+}) {
   const { weather, risk } = checkpoint;
   const rows = [
-    ["ETA", formatClock(checkpoint.eta)],
+    ["ETA", formatClock(checkpoint.eta, checkpoint.time_zone)],
     ["Wind", formatWind(weather.wind_speed_mph)],
     ["Rain", formatPerHour(weather.rain_in)],
     ["Snow", formatPerHour(weather.snowfall_in)],
@@ -20,7 +27,7 @@ export function CheckpointDetails({ checkpoint }: { checkpoint: Checkpoint }) {
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-3">
         <p className="font-medium">
-          {formatMileMarker(checkpoint.mile_marker_mi)}
+          {title ?? formatMileMarker(checkpoint.mile_marker_mi)}
         </p>
         <RiskBadge level={risk.level} />
       </div>

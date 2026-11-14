@@ -10,6 +10,9 @@ from trips.services.plan_trip import TripRequest
 
 PLACE_QUERY_MIN_LENGTH = 2
 PLACE_QUERY_MAX_LENGTH = 100
+# The US federal gross weight limit on interstates (owner's decision): no legal load without a
+# special permit can exceed it.
+MAX_LOAD_WEIGHT_LB = 80_000
 
 
 class StrictSerializer(serializers.Serializer[Any]):
@@ -40,6 +43,10 @@ class TripPlanRequestSerializer(StrictSerializer):
     def validate_load_weight_lb(self, value: float) -> float:
         if value <= 0:
             raise serializers.ValidationError("Load weight must be more than 0 lb.")
+        if value > MAX_LOAD_WEIGHT_LB:
+            raise serializers.ValidationError(
+                f"Load weight can be at most {MAX_LOAD_WEIGHT_LB:,} lb, the federal limit."
+            )
         return value
 
     def trip_request(self) -> TripRequest:
@@ -77,6 +84,7 @@ class CheckpointSerializer(serializers.Serializer[Any]):
     eta = serializers.DateTimeField()
     weather = ConditionsSerializer(source="conditions")
     risk = CheckpointRiskSerializer()
+    time_zone = serializers.CharField()
 
 
 class RouteRiskSerializer(serializers.Serializer[Any]):
@@ -120,6 +128,8 @@ class TripPlanSerializer(serializers.Serializer[Any]):
     routes = RouteSerializer(many=True)
     recommendation = RecommendationSerializer()
     corridor = CorridorSerializer()
+    origin_time_zone = serializers.CharField()
+    destination_time_zone = serializers.CharField()
 
 
 class PlaceQuerySerializer(StrictSerializer):
@@ -131,3 +141,4 @@ class PlaceQuerySerializer(StrictSerializer):
 class PlaceSerializer(serializers.Serializer[Any]):
     name = serializers.CharField()
     coordinate = CoordinateSerializer()
+    time_zone = serializers.CharField()

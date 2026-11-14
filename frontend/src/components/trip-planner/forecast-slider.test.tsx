@@ -13,6 +13,7 @@ function Harness({ onChange }: { onChange: (hour: number) => void }) {
   return (
     <ForecastSlider
       startAt={START}
+      timeZone="America/Chicago"
       hour={hour}
       onChange={(next) => {
         setHour(next);

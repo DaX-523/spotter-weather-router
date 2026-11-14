@@ -8,6 +8,7 @@ from tests.fakes import (
     DENVER,
     NOW,
     FakeRouting,
+    FakeTimeZones,
     FakeWeather,
     RouteCall,
     WeatherCall,
@@ -35,7 +36,9 @@ def plan(
     routing: FakeRouting | None = None,
     weather: FakeWeather | None = None,
 ) -> TripPlan:
-    return plan_trip(request, routing or FakeRouting(), weather or FakeWeather(), now=NOW)
+    return plan_trip(
+        request, routing or FakeRouting(), weather or FakeWeather(), FakeTimeZones(), now=NOW
+    )
 
 
 def test_asks_for_truck_routes_for_the_trip() -> None:
@@ -133,6 +136,22 @@ def test_summarises_each_route() -> None:
 
     assert (route.id, route.distance_mi, route.duration_s) == (0, 1000.0, 54_000)
     assert route.arrival_at == datetime(2026, 11, 15, 6, 0, tzinfo=UTC)
+
+
+def test_names_the_time_zones_of_the_origin_and_destination() -> None:
+    trip_plan = plan()
+
+    assert (trip_plan.origin_time_zone, trip_plan.destination_time_zone) == (
+        "America/Chicago",
+        "America/Denver",
+    )
+
+
+def test_gives_each_checkpoint_the_time_zone_the_truck_is_in_there() -> None:
+    route = plan().routes[0]
+
+    zones = [checkpoint.time_zone for checkpoint in route.checkpoints]
+    assert (zones[0], zones[-1]) == ("America/Chicago", "America/Denver")
 
 
 def test_numbers_the_routes_in_the_order_the_provider_gave_them() -> None:

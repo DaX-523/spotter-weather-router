@@ -14,7 +14,11 @@ def test_suggests_places_for_what_the_driver_typed(
 
     assert response.status_code == 200
     assert response.json() == [
-        {"name": "Chicago, IL", "coordinate": {"lat": 41.8781, "lon": -87.6298}}
+        {
+            "name": "Chicago, IL",
+            "coordinate": {"lat": 41.8781, "lon": -87.6298},
+            "time_zone": "America/Chicago",
+        }
     ]
     assert fake_place_search.queries == ["Chica"]
 

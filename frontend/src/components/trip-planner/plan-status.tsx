@@ -44,9 +44,8 @@ export function PlanStatus({ hasTrip, plan }: Props) {
   }
   if (plan.isPending) {
     return (
-      <p role="status" className="text-sm text-muted-foreground">
-        Planning your trip…
-      </p>
+      // The planning pop-up over the map is the live status; this stays put on small screens.
+      <p className="text-sm text-muted-foreground">Planning your trip…</p>
     );
   }
   const { routes, spacing_mi, recommendation } = plan.data;

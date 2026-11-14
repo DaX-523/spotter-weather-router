@@ -27,9 +27,11 @@ describe("trip query in the URL", () => {
       from: "Chicago, IL",
       from_lat: "41.8781",
       from_lon: "-87.6298",
+      from_tz: "America/Chicago",
       to: "Denver, CO",
       to_lat: "39.7392",
       to_lon: "-104.9903",
+      to_tz: "America/Denver",
       depart: "2026-11-14T15:00:00.000Z",
       load: "30000",
     });
@@ -46,10 +48,15 @@ describe("trip query in the URL", () => {
   });
 
   it.each([
-    ["from=Chicago&from_lat=91&from_lon=0", "origin"],
-    ["from=Chicago&from_lat=41&from_lon=-181", "origin"],
-    ["from=&from_lat=41&from_lon=-87", "origin"],
-    ["to=Denver&to_lat=abc&to_lon=-104", "destination"],
+    ["from=Chicago&from_lat=91&from_lon=0&from_tz=America/Chicago", "origin"],
+    [
+      "from=Chicago&from_lat=41&from_lon=-181&from_tz=America/Chicago",
+      "origin",
+    ],
+    ["from=&from_lat=41&from_lon=-87&from_tz=America/Chicago", "origin"],
+    ["from=Chicago&from_lat=41&from_lon=-87", "origin"],
+    ["from=Chicago&from_lat=41&from_lon=-87&from_tz=Mars/Olympus", "origin"],
+    ["to=Denver&to_lat=abc&to_lon=-104&to_tz=America/Denver", "destination"],
     ["depart=yesterday", "departureAt"],
     ["load=0", "loadWeightLb"],
     ["load=-5", "loadWeightLb"],

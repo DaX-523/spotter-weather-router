@@ -10,11 +10,15 @@ const METERS_PER_MILE = 1609.344;
 // Each checkpoint's shading reaches 60% of the way to its neighbours, so they blend into a band.
 const SHADING_REACH = 0.6;
 
-/** "Now · Sat, 9:00 AM CST", "+6 h · Sat, 3:00 PM CST". */
-export function forecastHourLabel(startAt: string, hour: number): string {
+/** "Now · Sat, 9:00 AM CST", "+6 h · Sat, 3:00 PM CST", in the origin's local time. */
+export function forecastHourLabel(
+  startAt: string,
+  hour: number,
+  timeZone: string,
+): string {
   const moment = new Date(new Date(startAt).getTime() + hour * MS_PER_HOUR);
   const offset = hour === 0 ? "Now" : `+${hour} h`;
-  return `${offset} · ${formatClock(moment.toISOString())}`;
+  return `${offset} · ${formatClock(moment.toISOString(), timeZone)}`;
 }
 
 export function corridorRadiusMeters(spacingMi: number): number {

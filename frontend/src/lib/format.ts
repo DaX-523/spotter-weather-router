@@ -14,12 +14,8 @@ const inches = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 3,
 });
-const clock = new Intl.DateTimeFormat("en-US", {
-  weekday: "short",
-  hour: "numeric",
-  minute: "2-digit",
-  timeZoneName: "short",
-});
+// One formatter per time zone: building them is the slow part.
+const clocks = new Map<string, Intl.DateTimeFormat>();
 
 export function formatMiles(miles: number): string {
   return `${wholeNumber.format(miles)} mi`;
@@ -37,8 +33,19 @@ export function formatDuration(seconds: number): string {
   return minutes === 0 ? `${hours} h` : `${hours} h ${minutes} min`;
 }
 
-/** Weekday, time and zone in the driver's time zone, e.g. "Sun, 12:00 AM CST". */
-export function formatClock(iso: string): string {
+/** Weekday, local time and zone where it happens, e.g. "Sun, 12:00 AM CST". */
+export function formatClock(iso: string, timeZone: string): string {
+  let clock = clocks.get(timeZone);
+  if (!clock) {
+    clock = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      weekday: "short",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: "short",
+    });
+    clocks.set(timeZone, clock);
+  }
   // Some ICU versions put a narrow no-break space before AM/PM; keep plain spaces.
   return clock.format(new Date(iso)).replace(/\u202f/g, " ");
 }

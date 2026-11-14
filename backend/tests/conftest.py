@@ -1,7 +1,7 @@
 import pytest
 from rest_framework.test import APIClient
 
-from tests.fakes import NOW, FakePlaceSearch, FakeRouting, FakeWeather
+from tests.fakes import NOW, FakePlaceSearch, FakeRouting, FakeTimeZones, FakeWeather
 from trips import wiring
 
 
@@ -32,6 +32,7 @@ def api_client(
         routing=fake_routing,
         place_search=fake_place_search,
         weather=fake_weather,
+        time_zones=FakeTimeZones(),
         clock=lambda: NOW,
     )
     monkeypatch.setattr(wiring, "providers", lambda: providers)

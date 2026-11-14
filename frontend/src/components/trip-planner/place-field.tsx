@@ -43,7 +43,7 @@ export function PlaceField({ id, label, value, onChange, error }: Props) {
         id={id}
         value={text}
         onChange={(event) => edit(event.target.value)}
-        placeholder="City, address or place"
+        placeholder="US city, address or place"
         autoComplete="off"
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}

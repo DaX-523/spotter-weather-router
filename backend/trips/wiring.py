@@ -13,9 +13,10 @@ from django.utils import timezone
 
 from trips.adapters.cached_weather import CachedWeather
 from trips.adapters.open_meteo import OpenMeteoWeather
+from trips.adapters.timezone_lookup import TimezoneFinderLookup
 from trips.adapters.tomtom_routing import TomTomRouting
 from trips.adapters.tomtom_search import TomTomPlaceSearch
-from trips.ports import PlaceSearch, RoutingProvider, WeatherProvider
+from trips.ports import PlaceSearch, RoutingProvider, TimeZoneLookup, WeatherProvider
 
 
 @dataclass(frozen=True)
@@ -23,6 +24,7 @@ class Providers:
     routing: RoutingProvider
     place_search: PlaceSearch
     weather: WeatherProvider
+    time_zones: TimeZoneLookup
     clock: Callable[[], datetime]
 
 
@@ -34,6 +36,7 @@ def providers() -> Providers:
         weather=CachedWeather(
             OpenMeteoWeather(_client(settings.OPEN_METEO_BASE_URL)), caches["default"]
         ),
+        time_zones=_time_zones(),
         clock=timezone.now,
     )
 
@@ -42,3 +45,9 @@ def providers() -> Providers:
 def _client(base_url: str) -> httpx.Client:
     """One pooled client per provider host, shared by every request."""
     return httpx.Client(base_url=base_url, timeout=settings.PROVIDER_TIMEOUT_S)
+
+
+@cache
+def _time_zones() -> TimeZoneLookup:
+    """Loading the zone data takes about a second, so it happens once per process."""
+    return TimezoneFinderLookup()

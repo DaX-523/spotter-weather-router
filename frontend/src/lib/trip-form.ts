@@ -1,5 +1,6 @@
 import type { Place } from "@/lib/api";
-import { fromLocalInputValue } from "@/lib/datetime";
+import { DEFAULT_TIME_ZONE, fromZonedInputValue } from "@/lib/datetime";
+import { maxLoad, toPounds, type LoadUnit } from "@/lib/load";
 import type { TripQuery } from "@/lib/trip-query";
 
 // Mirrors the backend's window (backend/trips/services/plan_trip.py), which stays the authority:
@@ -10,9 +11,10 @@ const MAX_DEPARTURE_AHEAD_MS = 48 * 60 * 60 * 1000;
 export type TripFormValues = {
   origin: Place | null;
   destination: Place | null;
-  /** The datetime-local input's value. */
+  /** The datetime-local input's value, in the origin's local time. */
   departureLocal: string;
-  loadWeightLb: string;
+  loadAmount: string;
+  loadUnit: LoadUnit;
 };
 
 /** Keyed like the API's fields, so the server's errors land on the same inputs. */
@@ -23,19 +25,27 @@ export type TripFormErrors = Partial<Record<TripFormField, string>>;
 export type TripFormResult =
   { ok: true; query: TripQuery } | { ok: false; errors: TripFormErrors };
 
+/** The zone the departure is entered in: the origin's. */
+export function departureZone(origin: Place | null): string {
+  return origin?.time_zone ?? DEFAULT_TIME_ZONE;
+}
+
 export function validateTripForm(
   values: TripFormValues,
   now: Date,
 ): TripFormResult {
-  const departure = fromLocalInputValue(values.departureLocal);
-  const load =
-    values.loadWeightLb.trim() === ""
-      ? Number.NaN
-      : Number(values.loadWeightLb);
+  const { origin, destination, loadUnit } = values;
+  const departure = fromZonedInputValue(
+    values.departureLocal,
+    departureZone(origin),
+  );
+  const amount =
+    values.loadAmount.trim() === "" ? Number.NaN : Number(values.loadAmount);
+  const limit = maxLoad(loadUnit);
   const errors: TripFormErrors = {};
 
-  if (!values.origin) errors.origin = "Pick the origin from the suggestions";
-  if (!values.destination) {
+  if (!origin) errors.origin = "Pick the origin from the suggestions";
+  if (!destination) {
     errors.destination = "Pick the destination from the suggestions";
   }
   if (!departure) {
@@ -43,13 +53,14 @@ export function validateTripForm(
   } else if (!isWithinDepartureWindow(departure, now)) {
     errors.departure_at = "Departure must be between now and 48 hours from now";
   }
-  if (Number.isNaN(load)) {
-    errors.load_weight_lb = "Enter the load weight in pounds";
-  } else if (load <= 0) {
-    errors.load_weight_lb = "Load weight must be more than 0 lb";
+  if (Number.isNaN(amount)) {
+    errors.load_weight_lb = "Enter the load weight";
+  } else if (amount <= 0) {
+    errors.load_weight_lb = `Load weight must be more than 0 ${loadUnit}`;
+  } else if (amount > limit) {
+    errors.load_weight_lb = `Load weight can be at most ${limit.toLocaleString("en-US")} ${loadUnit}, the federal limit`;
   }
 
-  const { origin, destination } = values;
   if (origin && destination && departure && Object.keys(errors).length === 0) {
     return {
       ok: true,
@@ -57,7 +68,7 @@ export function validateTripForm(
         origin,
         destination,
         departureAt: departure.toISOString(),
-        loadWeightLb: load,
+        loadWeightLb: toPounds(amount, loadUnit),
       },
     };
   }

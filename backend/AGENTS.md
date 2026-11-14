@@ -107,6 +107,9 @@ Everything lives under `/api/v1`.
   Nothing vendor-specific leaks out of the adapter.
 - Sample weather along a route at a fixed spacing (a named constant), not at every polyline
   vertex. Batch points into one request where the vendor allows it.
+- Time zones come from `timezonefinder` behind the `TimeZoneLookup` port: offline data, so no
+  network and no randomness, which makes its adapter safe to test for real. Loading the data
+  takes about a second, so `wiring.py` builds one lookup per process.
 - Cache responses that can't change within their validity window with Django's cache framework.
   A forecast for a location and hour is one example. Key the cache on rounded inputs and expire
   it explicitly. Respect each vendor's rate limits and terms.

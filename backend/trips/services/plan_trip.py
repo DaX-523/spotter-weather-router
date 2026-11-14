@@ -16,7 +16,7 @@ from trips.domain.risk import CheckpointRisk, assess_checkpoint
 from trips.domain.routes import Route
 from trips.domain.timing import end_of_hour, eta_at, start_of_hour
 from trips.domain.weather import Conditions, PointForecast, conditions_at
-from trips.ports import RoutingProvider, WeatherProvider
+from trips.ports import RoutingProvider, TimeZoneLookup, WeatherProvider
 
 # Owner's window (artifacts/REQUIREMENTS.md): from now to 48 hours ahead. A departure picked a
 # moment ago still counts as now: the driver's clock and ours never agree to the second.
@@ -43,6 +43,8 @@ class PlannedCheckpoint:
     eta: datetime
     conditions: Conditions
     risk: CheckpointRisk
+    # Where the truck is at its ETA, so the ETA is shown in local time there.
+    time_zone: str
 
 
 @dataclass(frozen=True)
@@ -63,13 +65,30 @@ class TripPlan:
     routes: tuple[PlannedRoute, ...]
     recommendation: Recommendation
     corridor: Corridor
+    # Departure is shown in the origin's local time and arrival in the destination's.
+    origin_time_zone: str
+    destination_time_zone: str
 
 
 TimedCheckpoints = list[tuple[Checkpoint, datetime]]
 
 
+@dataclass(frozen=True)
+class _TripContext:
+    """What every route of the trip is rated against."""
+
+    departure: datetime
+    load_weight_lb: float
+    forecasts: dict[Coordinate, PointForecast]
+    zones: TimeZoneLookup
+
+
 def plan_trip(
-    request: TripRequest, routing: RoutingProvider, weather: WeatherProvider, now: datetime
+    request: TripRequest,
+    routing: RoutingProvider,
+    weather: WeatherProvider,
+    zones: TimeZoneLookup,
+    now: datetime,
 ) -> TripPlan:
     departure = _departure(request.departure, now)
     straight_line_mi = distance_mi(request.origin, request.destination)
@@ -84,8 +103,9 @@ def plan_trip(
     # The slider's hour 0. The departure is never earlier, so this also covers every ETA.
     corridor_start = start_of_hour(now)
     forecasts = _forecasts(weather, timed, corridor_start)
+    context = _TripContext(departure, request.load_weight_lb, forecasts, zones)
     planned = tuple(
-        _planned_route(index, route, checkpoints, departure, forecasts, request.load_weight_lb)
+        _planned_route(index, route, checkpoints, context)
         for index, (route, checkpoints) in enumerate(zip(routes, timed, strict=True))
     )
     return TripPlan(
@@ -96,6 +116,8 @@ def plan_trip(
             [RouteOption(route.id, route.risk, route.duration_s) for route in planned]
         ),
         corridor=corridor_risk(forecasts, corridor_start, request.load_weight_lb),
+        origin_time_zone=zones.zone_at(request.origin),
+        destination_time_zone=zones.zone_at(request.destination),
     )
 
 
@@ -131,23 +153,17 @@ def _forecasts(
 
 
 def _planned_route(
-    route_id: int,
-    route: Route,
-    checkpoints: TimedCheckpoints,
-    departure: datetime,
-    forecasts: dict[Coordinate, PointForecast],
-    load_weight_lb: float,
+    route_id: int, route: Route, checkpoints: TimedCheckpoints, context: _TripContext
 ) -> PlannedRoute:
     planned = tuple(
-        _planned_checkpoint(checkpoint, eta, forecasts[checkpoint.coordinate], load_weight_lb)
-        for checkpoint, eta in checkpoints
+        _planned_checkpoint(checkpoint, eta, context) for checkpoint, eta in checkpoints
     )
     return PlannedRoute(
         id=route_id,
         polyline=simplify(route.polyline, DISPLAY_TOLERANCE_MI),
         distance_mi=route.distance_mi,
         duration_s=route.duration_s,
-        arrival_at=departure + timedelta(seconds=route.duration_s),
+        arrival_at=context.departure + timedelta(seconds=route.duration_s),
         checkpoints=planned,
         risk=route_risk(
             [(checkpoint.mile_marker_mi, checkpoint.risk.level) for checkpoint in planned]
@@ -156,13 +172,14 @@ def _planned_route(
 
 
 def _planned_checkpoint(
-    checkpoint: Checkpoint, eta: datetime, forecast: PointForecast, load_weight_lb: float
+    checkpoint: Checkpoint, eta: datetime, context: _TripContext
 ) -> PlannedCheckpoint:
-    conditions = conditions_at(forecast, eta)
+    conditions = conditions_at(context.forecasts[checkpoint.coordinate], eta)
     return PlannedCheckpoint(
         coordinate=checkpoint.coordinate,
         mile_marker_mi=checkpoint.mile_marker_mi,
         eta=eta,
         conditions=conditions,
-        risk=assess_checkpoint(conditions, load_weight_lb),
+        risk=assess_checkpoint(conditions, context.load_weight_lb),
+        time_zone=context.zones.zone_at(checkpoint.coordinate),
     )

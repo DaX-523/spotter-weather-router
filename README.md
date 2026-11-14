@@ -14,8 +14,9 @@ recommends a route, with the reasons, on a map with a 0–48 hour weather heatma
 ## What it does
 
 - **Plan a trip.** Origin and destination with place suggestions (US only), a departure from now to
-  48 hours ahead, and the load in pounds. The trip lives in the URL, so a plan survives a reload,
-  can be shared, and works with Back.
+  48 hours ahead in the origin's local time, and the load in pounds or kilograms (up to the
+  80,000 lb federal limit). The trip lives in the URL, so a plan survives a reload, can be
+  shared, and works with Back.
 - **Three routes**, from TomTom's truck routing, which respects the load's weight.
 - **Checkpoints** every 10, 25 or 50 miles along each route, each with its ETA and the forecast
   wind, rain and snow for that moment.
@@ -25,6 +26,11 @@ recommends a route, with the reasons, on a map with a 0–48 hour weather heatma
   lowest average risk, then the shortest time. A route crossing No Travel conditions is never
   recommended, and the app says so when no route is safe.
 - **A corridor heatmap** with a 0–48 h slider: the forecast risk along every route, hour by hour.
+- **Local time everywhere.** Each ETA is shown in the time zone the truck will be in, and arrival
+  in the destination's, labelled CST, MST and so on.
+- **A map that reads like a map app**: a truck marks the start and a flag pin the end, hazard
+  symbols mark risky checkpoints, routes are easy to pick (wide click target, hover highlight and
+  tooltip), and a short animation shows what the planner is doing while it works.
 
 ## Quick start
 
@@ -65,7 +71,7 @@ flowchart LR
 The browser only talks to our API, so provider keys never leave the server. One
 `POST /api/v1/trip-plans` does the whole job:
 
-1. **Validate** the trip (departure window, origin ≠ destination, load > 0).
+1. **Validate** the trip (departure window, origin ≠ destination, load from 1 to 80,000 lb).
 2. **Route**: up to three truck routes from TomTom, departing at that time with that load.
 3. **Checkpoints**: pick the spacing from the straight-line trip distance, place checkpoints along
    each route, and give each an ETA.
@@ -73,6 +79,10 @@ The browser only talks to our API, so provider keys never leave the server. One
    the next 48 hours.
 5. **Risk**: rate each checkpoint at its ETA, each route along its length, and recommend one.
 6. **Corridor**: rate every checkpoint for each hour from now to 48 h ahead, for the heatmap.
+7. **Time zones**: give each checkpoint and both ends their IANA time zone, looked up offline.
+
+Every flow, from the system down to the rules, is drawn in
+[`artifacts/DIAGRAMS.md`](artifacts/DIAGRAMS.md).
 
 The backend keeps business rules in plain, framework-free Python (`backend/trips/domain/`).
 Providers sit behind small interfaces (`trips/ports.py`), so the domain never sees a vendor's JSON
@@ -95,7 +105,8 @@ Each level starts at its number, so 25 mph is Moderate and 0.25 in/hr is High. N
 Severe.
 
 **Load rules**: 45–54 mph with a load over 30,000 lb is No Travel; 35–44 mph with a load over
-40,000 lb is Severe. The load is the cargo's weight only.
+40,000 lb is Severe. The load is the cargo's weight only, from 1 lb up to 80,000 lb, the US
+federal gross weight limit.
 
 A checkpoint takes its worst condition. If a reading is missing and nothing known is High or
 worse, the checkpoint is **Unknown**, never Low.
@@ -124,7 +135,15 @@ step decided ("Fewest miles in severe conditions").
   share of the distance covered. No rest stops (the owner's "not now").
 - **Departure** from now to 48 hours ahead. A departure up to 5 minutes in the past counts as now,
   since the driver's clock and ours never agree to the second.
-- **US units everywhere**, in the code, on the wire and on screen. Metric is a "not now".
+- **US units everywhere**, in the code, on the wire and on screen. Metric is a "not now". The one
+  exception is the load, which the driver may type in kilograms; the browser converts it to
+  pounds before anything else sees it.
+- **Local time where it happens.** The departure is typed in the origin's local time (US Central
+  until an origin is picked), each ETA is shown in its checkpoint's zone and arrival in the
+  destination's. The backend works in UTC; time zones come from `timezonefinder`'s offline data,
+  so they cost no request, and handle Arizona's year-round standard time and Indiana correctly.
+- **No Travel is never recommended.** A route with any No Travel miles is excluded; if every route
+  has them, the app recommends nothing and says why.
 - **Stateless.** No database, no accounts: planning is a calculation. Forecasts are cached in
   memory for 15 minutes, keyed to about 0.7 mi, to stay fast and inside Open-Meteo's free tier.
 - **Providers.** TomTom for truck routing and place search; Open-Meteo for weather, because one
@@ -149,7 +168,6 @@ step decided ("Fewest miles in severe conditions").
 - **Only wind, rain and snow.** Visibility, ice and temperature aren't rated.
 - **Free tiers.** Open-Meteo's free API is for non-commercial use, and OpenStreetMap's tile servers
   aren't for heavy production traffic. The cache is per process and is lost on restart.
-- **Times are shown in the browser's time zone**, with the zone name.
 - **Not deployed yet**, and there are no accounts or trip history (both "not now").
 
 ## API
@@ -157,7 +175,7 @@ step decided ("Fewest miles in severe conditions").
 | Endpoint                           | Purpose                                                        |
 | ---------------------------------- | -------------------------------------------------------------- |
 | `POST /api/v1/trip-plans`          | Plan a trip: routes, checkpoints, risk, recommendation, corridor |
-| `GET /api/v1/places?query=chicago` | Up to 5 US place suggestions (2+ characters)                   |
+| `GET /api/v1/places?query=chicago` | Up to 5 US place suggestions (2+ characters), with time zones  |
 | `GET /health`                      | Liveness check                                                 |
 
 ```jsonc
@@ -168,10 +186,11 @@ step decided ("Fewest miles in severe conditions").
   "departure_at": "2026-11-15T14:00:00Z",
   "load_weight_lb": 30000
 }
-// 200 → { departure_at, spacing_mi, routes[], recommendation, corridor }
+// 200 → { departure_at, spacing_mi, routes[], recommendation, corridor,
+//          origin_time_zone, destination_time_zone }
 //   route: { id, distance_mi, duration_s, arrival_at, polyline[], checkpoints[], risk }
-//   checkpoint: { coordinate, mile_marker_mi, eta, weather, risk: { level, hazards[] } }
-// 400 names the field: { "departure_at": ["Departure must be between now and 48 hours from now"] }
+//   checkpoint: { coordinate, mile_marker_mi, eta, weather, risk: { level, hazards[] }, time_zone }
+// 400 names the field: { "load_weight_lb": ["Load weight can be at most 80,000 lb, the federal limit."] }
 // 404 no truck route · 502 a provider sent something unreadable · 503 a provider isn't responding
 ```
 
@@ -184,10 +203,10 @@ make test    # fast feedback, both apps
 make check   # lint, formatting, strict types, and tests with a 90% coverage gate
 ```
 
-- **Backend**: 257 tests, 100% line and branch coverage, Ruff, mypy strict. Every edge in the risk
+- **Backend**: 274 tests, 100% line and branch coverage, Ruff, mypy strict. Every edge in the risk
   table has its own test. Provider adapters are tested against hand-written stubs of each
   vendor's documented responses, through `httpx.MockTransport`; no test touches the network.
-- **Frontend**: 159 tests, 100% coverage, ESLint, Prettier, TypeScript strict. Tests drive the UI
+- **Frontend**: 217 tests, 100% coverage, ESLint, Prettier, TypeScript strict. Tests drive the UI
   as a user would (roles, labels, keyboard).
 - **CI** runs `make check` on every push to `main` and every pull request.
 

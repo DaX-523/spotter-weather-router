@@ -1,5 +1,8 @@
 // Everything the map shows is computed here, so the Leaflet components stay thin.
-import type { Coordinate, Route } from "@/lib/api";
+import type { Coordinate, Place, Route } from "@/lib/api";
+
+/** Where the trip starts and ends, as the driver picked them. */
+export type Endpoints = { origin: Place; destination: Place };
 
 /** Leaflet's point order: latitude first. The one place our named points become pairs. */
 export type LatLng = [number, number];

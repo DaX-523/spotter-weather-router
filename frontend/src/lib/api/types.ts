@@ -31,6 +31,8 @@ export type Checkpoint = {
   eta: string;
   weather: Conditions;
   risk: CheckpointRisk;
+  /** IANA zone where the truck is at its ETA; the ETA is shown in local time there. */
+  time_zone: string;
 };
 
 export type RouteRisk = {
@@ -74,6 +76,9 @@ export type TripPlan = {
   routes: Route[];
   recommendation: Recommendation;
   corridor: Corridor;
+  /** Departure is shown in the origin's local time, arrival in the destination's. */
+  origin_time_zone: string;
+  destination_time_zone: string;
 };
 
 export type TripPlanRequest = {
@@ -83,4 +88,9 @@ export type TripPlanRequest = {
   load_weight_lb: number;
 };
 
-export type Place = { name: string; coordinate: Coordinate };
+export type Place = {
+  name: string;
+  coordinate: Coordinate;
+  /** IANA zone, e.g. "America/Chicago". */
+  time_zone: string;
+};

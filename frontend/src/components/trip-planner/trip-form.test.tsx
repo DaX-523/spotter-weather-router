@@ -20,6 +20,8 @@ const EMPTY: TripQuery = {
   departureAt: null,
   loadWeightLb: null,
 };
+// The departure's label names its zone, e.g. "Departure (CST)".
+const DEPARTURE = /^Departure/;
 
 function renderForm(
   props: {
@@ -69,14 +71,49 @@ describe("TripForm", () => {
 
     expect(screen.getByLabelText("Origin")).toHaveValue("Chicago, IL");
     expect(screen.getByLabelText("Destination")).toHaveValue("Denver, CO");
-    expect(screen.getByLabelText("Departure")).toHaveValue("2026-11-14T09:00");
+    expect(screen.getByLabelText(DEPARTURE)).toHaveValue("2026-11-14T09:00");
     expect(screen.getByLabelText("Load weight (lb)")).toHaveValue(30_000);
   });
 
-  it("departs now unless told otherwise", () => {
+  it("departs now, in US Central time until an origin is picked", () => {
     renderForm();
 
-    expect(screen.getByLabelText("Departure")).toHaveValue("2026-11-14T09:00");
+    const departure = screen.getByLabelText("Departure (CST)");
+    expect(departure).toHaveValue("2026-11-14T09:00");
+    expect(departure).toHaveAccessibleDescription(
+      "US Central time until you pick an origin",
+    );
+  });
+
+  it("takes the departure in the origin's local time", () => {
+    renderForm({
+      initial: { ...TRIP_QUERY, origin: DENVER, destination: CHICAGO },
+    });
+
+    const departure = screen.getByLabelText("Departure (MST)");
+    expect(departure).toHaveValue("2026-11-14T08:00");
+    expect(departure).toHaveAccessibleDescription("Local time at the origin");
+  });
+
+  it("keeps the same departure moment when the origin's time zone changes", async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    await pick(user, "Origin", "Denver", "Denver, CO");
+
+    expect(screen.getByLabelText("Departure (MST)")).toHaveValue(
+      "2026-11-14T08:00",
+    );
+  });
+
+  it("leaves a cleared departure blank when the origin changes", async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    await user.clear(screen.getByLabelText(DEPARTURE));
+    await pick(user, "Origin", "Denver", "Denver, CO");
+
+    expect(screen.getByLabelText("Departure (MST)")).toHaveValue("");
   });
 
   it("plans the trip once everything is filled in", async () => {
@@ -91,6 +128,64 @@ describe("TripForm", () => {
     expect(onSubmit).toHaveBeenCalledWith(TRIP_QUERY);
   });
 
+  it("weighs the load in pounds unless the driver picks kilograms", () => {
+    renderForm();
+
+    expect(screen.getByRole("button", { name: "lb" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("converts the load when the driver switches to kilograms", async () => {
+    const user = userEvent.setup();
+    renderForm({ initial: TRIP_QUERY });
+
+    await user.click(screen.getByRole("button", { name: "kg" }));
+
+    expect(screen.getByLabelText("Load weight (kg)")).toHaveValue(13_608);
+    expect(screen.getByRole("button", { name: "kg" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("plans in pounds whatever unit the driver typed", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderForm({
+      initial: { ...TRIP_QUERY, loadWeightLb: null },
+    });
+
+    await user.click(screen.getByRole("button", { name: "kg" }));
+    await user.type(screen.getByLabelText("Load weight (kg)"), "10000");
+    await user.click(screen.getByRole("button", { name: "Plan trip" }));
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      ...TRIP_QUERY,
+      loadWeightLb: 22_046,
+    });
+  });
+
+  it("refuses a load over the federal limit before asking the server", async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderForm({
+      initial: { ...TRIP_QUERY, loadWeightLb: null },
+    });
+
+    await user.type(
+      screen.getByLabelText("Load weight (lb)"),
+      "183024823092434",
+    );
+    await user.click(screen.getByRole("button", { name: "Plan trip" }));
+
+    expect(
+      screen.getByLabelText("Load weight (lb)"),
+    ).toHaveAccessibleDescription(
+      "Load weight can be at most 80,000 lb, the federal limit",
+    );
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it("explains what is missing instead of planning", async () => {
     const user = userEvent.setup();
     const { onSubmit } = renderForm();
@@ -102,7 +197,7 @@ describe("TripForm", () => {
     );
     expect(
       screen.getByLabelText("Load weight (lb)"),
-    ).toHaveAccessibleDescription("Enter the load weight in pounds");
+    ).toHaveAccessibleDescription("Enter the load weight");
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
@@ -114,7 +209,7 @@ describe("TripForm", () => {
       },
     });
 
-    expect(screen.getByLabelText("Departure")).toHaveAccessibleDescription(
+    expect(screen.getByLabelText(DEPARTURE)).toHaveAccessibleDescription(
       "Departure must be between now and 48 hours from now",
     );
   });
@@ -129,11 +224,11 @@ describe("TripForm", () => {
     const user = userEvent.setup();
     const { onSubmit } = renderForm({ initial: TRIP_QUERY });
 
-    await user.clear(screen.getByLabelText("Departure"));
-    await user.type(screen.getByLabelText("Departure"), "2026-11-17T09:00");
+    await user.clear(screen.getByLabelText(DEPARTURE));
+    await user.type(screen.getByLabelText(DEPARTURE), "2026-11-17T09:00");
     await user.click(screen.getByRole("button", { name: "Plan trip" }));
 
-    expect(screen.getByLabelText("Departure")).toHaveAccessibleDescription(
+    expect(screen.getByLabelText(DEPARTURE)).toHaveAccessibleDescription(
       "Departure must be between now and 48 hours from now",
     );
     expect(onSubmit).not.toHaveBeenCalled();

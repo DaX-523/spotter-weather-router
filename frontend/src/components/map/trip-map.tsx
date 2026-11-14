@@ -1,33 +1,42 @@
 // The only place that imports Leaflet. Kept thin: every value drawn is computed in @/lib.
 import "leaflet/dist/leaflet.css";
 
-import { divIcon, type DivIcon, type PathOptions } from "leaflet";
+import {
+  canvas,
+  divIcon,
+  type DivIcon,
+  type LeafletMouseEvent,
+  type PathOptions,
+} from "leaflet";
 import { memo, useEffect, useMemo } from "react";
 import {
   Circle,
-  CircleMarker,
   MapContainer,
   Marker,
   Pane,
   Polyline,
   Popup,
   TileLayer,
+  Tooltip,
   useMap,
 } from "react-leaflet";
 
 import { CheckpointDetails } from "@/components/trip-planner/checkpoint-details";
 import type { Checkpoint, Corridor, RiskLevel, Route } from "@/lib/api";
 import { corridorRadiusMeters } from "@/lib/corridor";
-import { boundsOf, toLatLng, type LatLng } from "@/lib/map";
-import { markerHtml } from "@/lib/map-markers";
+import { boundsOf, toLatLng, type Endpoints, type LatLng } from "@/lib/map";
+import {
+  checkpointMarkerHtml,
+  endpointMarkerHtml,
+  type Endpoint,
+} from "@/lib/map-markers";
 import {
   RISK_LEVELS,
   markerSymbol,
   markerTitle,
   riskColorToken,
-  type MarkerSymbol,
 } from "@/lib/risk";
-import { isDrivable } from "@/lib/routes";
+import { isDrivable, routeTooltip } from "@/lib/routes";
 import { themeColor } from "@/lib/theme";
 
 // The contiguous US, before there is a trip to show.
@@ -38,11 +47,18 @@ const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 // OpenStreetMap's tile usage policy requires this attribution.
 const TILE_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
-const ROUTE_WEIGHT = { selected: 6, alternative: 4 };
+// Route lines are a few pixels wide; a click this close to one still picks it.
+const ROUTE_HIT_TOLERANCE_PX = 12;
+const ROUTE_WEIGHT = { selected: 6, alternative: 4, hovered: 7 };
 // A route crossing No Travel conditions is drawn dashed: it must not be driven.
 const NOT_DRIVABLE_DASH = "8 8";
-const LOW_RISK_RADIUS = 5;
+// Marker sizes: the hit area of a low-risk dot is bigger than the dot (see .checkpoint-dot).
+const DOT_SIZE_PX = 22;
 const SYMBOL_SIZE_PX = 26;
+const ORIGIN_SIZE_PX = 32;
+const DESTINATION_SIZE: LatLng = [30, 40];
+// Endpoints sit above every checkpoint marker.
+const ENDPOINT_Z_OFFSET = 1_000;
 // The heatmap's own pane, under the routes (overlay pane, 400) and markers (600). `.corridor-pane`
 // in index.css blurs it. Circles keep their level's exact colour: unlike an additive heatmap,
 // overlapping low-risk shading can never add up to look riskier.
@@ -54,6 +70,7 @@ type Props = {
   routes: Route[];
   selectedRouteId: number | null;
   onSelectRoute: (routeId: number) => void;
+  endpoints: Endpoints | null;
   corridor: Corridor | null;
   /** Hours from the corridor's start, 0 to 48. */
   corridorHour: number;
@@ -64,13 +81,19 @@ export const TripMap = memo(function TripMap({
   routes,
   selectedRouteId,
   onSelectRoute,
+  endpoints,
   corridor,
   corridorHour,
   spacingMi,
 }: Props) {
   const bounds = useMemo(() => boundsOf(routes), [routes]);
+  const renderer = useMemo(
+    () => canvas({ tolerance: ROUTE_HIT_TOLERANCE_PX }),
+    [],
+  );
   const selected = routes.find((route) => route.id === selectedRouteId);
   const alternatives = routes.filter((route) => route !== selected);
+  const checkpoints = selected?.checkpoints ?? [];
 
   return (
     <section aria-label="Map" className="relative h-full min-h-[60svh]">
@@ -78,6 +101,7 @@ export const TripMap = memo(function TripMap({
         center={US_CENTER}
         zoom={US_ZOOM}
         preferCanvas
+        renderer={renderer}
         className="absolute inset-0"
       >
         <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
@@ -97,7 +121,12 @@ export const TripMap = memo(function TripMap({
         )}
         {/* Alternatives first, so the selected route is drawn on top of them. */}
         {alternatives.map((route) => (
-          <RouteLine key={route.id} route={route} onSelect={onSelectRoute} />
+          <RouteLine
+            key={route.id}
+            route={route}
+            tooltip={routeTooltip(routes, route)}
+            onSelect={onSelectRoute}
+          />
         ))}
         {selected && (
           <RouteLine
@@ -107,12 +136,27 @@ export const TripMap = memo(function TripMap({
             onSelect={onSelectRoute}
           />
         )}
-        {selected?.checkpoints.map((checkpoint) => (
+        {/* Markers live in Leaflet's marker pane, always above every route line. */}
+        {checkpoints.slice(1, -1).map((checkpoint) => (
           <CheckpointMarker
             key={checkpoint.mile_marker_mi}
             checkpoint={checkpoint}
           />
         ))}
+        {endpoints && checkpoints.length > 0 && (
+          <>
+            <EndpointMarker
+              endpoint="origin"
+              name={endpoints.origin.name}
+              checkpoint={checkpoints[0]}
+            />
+            <EndpointMarker
+              endpoint="destination"
+              name={endpoints.destination.name}
+              checkpoint={checkpoints[checkpoints.length - 1]}
+            />
+          </>
+        )}
       </MapContainer>
     </section>
   );
@@ -163,22 +207,31 @@ function FitBounds({ bounds }: { bounds: [LatLng, LatLng] | null }) {
   return null;
 }
 
+/** A route line. An alternative thickens on hover and says how to pick it. */
 const RouteLine = memo(function RouteLine({
   route,
   selected = false,
+  tooltip,
   onSelect,
 }: {
   route: Route;
   selected?: boolean;
+  tooltip?: string;
   onSelect: (routeId: number) => void;
 }) {
   const positions = useMemo(
     () => route.polyline.map(toLatLng),
     [route.polyline],
   );
+  const weight = selected ? ROUTE_WEIGHT.selected : ROUTE_WEIGHT.alternative;
   const eventHandlers = useMemo(
-    () => ({ click: () => onSelect(route.id) }),
-    [onSelect, route.id],
+    () => ({
+      click: () => onSelect(route.id),
+      mouseover: (event: LeafletMouseEvent) =>
+        event.target.setStyle({ weight: ROUTE_WEIGHT.hovered }),
+      mouseout: (event: LeafletMouseEvent) => event.target.setStyle({ weight }),
+    }),
+    [onSelect, route.id, weight],
   );
   return (
     <Polyline
@@ -186,10 +239,12 @@ const RouteLine = memo(function RouteLine({
       eventHandlers={eventHandlers}
       pathOptions={{
         color: themeColor(selected ? "map-route" : "map-route-alternative"),
-        weight: selected ? ROUTE_WEIGHT.selected : ROUTE_WEIGHT.alternative,
+        weight,
         dashArray: isDrivable(route) ? undefined : NOT_DRIVABLE_DASH,
       }}
-    />
+    >
+      {tooltip && <Tooltip sticky>{tooltip}</Tooltip>}
+    </Polyline>
   );
 });
 
@@ -197,51 +252,71 @@ const RouteLine = memo(function RouteLine({
 function CheckpointMarker({ checkpoint }: { checkpoint: Checkpoint }) {
   const { risk } = checkpoint;
   const symbol = markerSymbol(risk);
-  const popup = (
-    <Popup>
-      <CheckpointDetails checkpoint={checkpoint} />
-    </Popup>
-  );
-  if (symbol === null) {
-    return (
-      <CircleMarker
-        center={toLatLng(checkpoint.coordinate)}
-        radius={LOW_RISK_RADIUS}
-        pathOptions={{
-          color: themeColor("map-checkpoint"),
-          fillColor: themeColor("risk-low"),
-          fillOpacity: 1,
-          weight: 2,
-        }}
-      >
-        {popup}
-      </CircleMarker>
-    );
-  }
+  const size = symbol === null ? DOT_SIZE_PX : SYMBOL_SIZE_PX;
   return (
     <Marker
       position={toLatLng(checkpoint.coordinate)}
-      icon={symbolIcon(symbol, risk.level)}
+      icon={cachedIcon(checkpointMarkerHtml(symbol, risk.level), [size, size])}
       title={markerTitle(risk)}
     >
-      {popup}
+      <Popup>
+        <CheckpointDetails checkpoint={checkpoint} />
+      </Popup>
     </Marker>
   );
 }
 
-// At most 5 symbols × 6 levels: build each icon once and reuse it.
+/** The trip's start (a truck) and end (a flag pin), above everything, like map apps mark them. */
+function EndpointMarker({
+  endpoint,
+  name,
+  checkpoint,
+}: {
+  endpoint: Endpoint;
+  name: string;
+  checkpoint: Checkpoint;
+}) {
+  const label = endpoint === "origin" ? "Origin" : "Destination";
+  const isOrigin = endpoint === "origin";
+  const size: LatLng = isOrigin
+    ? [ORIGIN_SIZE_PX, ORIGIN_SIZE_PX]
+    : DESTINATION_SIZE;
+  return (
+    <Marker
+      position={toLatLng(checkpoint.coordinate)}
+      icon={cachedIcon(
+        endpointMarkerHtml(endpoint, checkpoint.risk.level),
+        size,
+        // A pin points at its place with its tip; the truck disc sits centred on it.
+        isOrigin ? undefined : [size[0] / 2, size[1]],
+      )}
+      title={`${label}: ${name}`}
+      zIndexOffset={ENDPOINT_Z_OFFSET}
+    >
+      <Popup>
+        <CheckpointDetails
+          checkpoint={checkpoint}
+          title={`${label} · ${name}`}
+        />
+      </Popup>
+    </Marker>
+  );
+}
+
+// Few distinct markers (symbols × levels, plus the endpoints): build each icon once.
 const icons = new Map<string, DivIcon>();
 
-function symbolIcon(symbol: MarkerSymbol, level: RiskLevel): DivIcon {
-  const key = `${symbol}:${level}`;
+function cachedIcon(html: string, size: LatLng, anchor?: LatLng): DivIcon {
+  const key = `${html}|${size}|${anchor}`;
   let icon = icons.get(key);
   if (!icon) {
     icon = divIcon({
-      html: markerHtml(symbol, level),
+      html,
       // No class: drop Leaflet's default white box around custom icons.
       className: "",
-      iconSize: [SYMBOL_SIZE_PX, SYMBOL_SIZE_PX],
-      popupAnchor: [0, -SYMBOL_SIZE_PX / 2],
+      iconSize: size,
+      iconAnchor: anchor,
+      popupAnchor: anchor ? [0, -size[1]] : [0, -size[1] / 2],
     });
     icons.set(key, icon);
   }

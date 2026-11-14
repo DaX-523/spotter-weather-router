@@ -14,8 +14,14 @@ describe("forecastHourLabel", () => {
     [0, "Now · Sat, 9:00 AM CST"],
     [1, "+1 h · Sat, 10:00 AM CST"],
     [CORRIDOR_HOURS, "+48 h · Mon, 9:00 AM CST"],
-  ])("labels hour %i as %s", (hour, expected) => {
-    expect(forecastHourLabel(START, hour)).toBe(expected);
+  ])("labels hour %i as %s in the origin's time", (hour, expected) => {
+    expect(forecastHourLabel(START, hour, "America/Chicago")).toBe(expected);
+  });
+
+  it("uses the origin's time zone, wherever the driver is", () => {
+    expect(forecastHourLabel(START, 0, "America/Denver")).toBe(
+      "Now · Sat, 8:00 AM MST",
+    );
   });
 });
 

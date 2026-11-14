@@ -28,13 +28,17 @@ reasons.
 
 1. Type "Chic" in **Origin**; pick **Chicago, IL** from the suggestions.
 2. Pick **Denver, CO** as the **Destination**.
-3. Leave **Departure** at now (it accepts anything up to 48 hours ahead), and enter **30000** as
-   the **Load weight (lb)**.
-4. Click **Plan trip**. Point at the address bar, then reload the page.
+3. Point at the **Departure (CST)** label: it's the origin's local time. Leave it at now (it
+   accepts anything up to 48 hours ahead).
+4. Enter **30000** as the **Load weight (lb)**; tap **kg** to show it converts (13,608 kg), then
+   switch back. Try **900000** and plan: the field explains the 80,000 lb federal limit.
+5. Click **Plan trip**: the planning pop-up shows a truck driving through the weather while the
+   planner works. Then point at the address bar and reload the page.
 
-**Say:** Places come from TomTom search, through our backend, so no key reaches the browser. The
-trip lives in the URL, so a reload, a shared link or the Back button all bring the plan back. The
-form checks the same rules as the API, which stays the authority.
+**Say:** The badge in the header says it up front: US routes, US units, local time. Places come
+from TomTom search through our backend, so no key reaches the browser, and each comes with its
+time zone. The trip lives in the URL, so a reload, a shared link or the Back button all bring the
+plan back. The form checks the same rules as the API, which stays the authority.
 
 ## 3. The recommendation (1:10–2:10)
 
@@ -58,14 +62,16 @@ The line under the recommendation says which of those decided it.
 
 **Show:**
 
-1. The recommended route drawn on top and the others in grey. A route the driver must not take
-   is dashed.
-2. Click another route's line or card: it becomes the selected route.
+1. The truck marks the start and the red flag pin the end. The recommended route is drawn on top
+   and the others in grey; a route the driver must not take is dashed.
+2. Hover another route's line: it thickens and its tooltip says how long it is. Click it (or its
+   card): it becomes the selected route.
 3. Hover a hazard symbol (wind, rain, snow, a no-entry sign for No Travel, "?" for Unknown), then
    click one. The popup has the mile marker, ETA, wind, rain, snow and the reasons.
 4. Point at the plain green dots: low risk, no symbol.
 
-**Say:** Each checkpoint's weather is the forecast for its ETA. Wind is taken at the nearest
+**Say:** Each checkpoint's weather is the forecast for its ETA, and the ETA is shown in local
+time where the truck will be: Central time near Chicago, Mountain time near Denver. Wind is taken at the nearest
 hour. Rain and snow are hourly totals, taken for the hour the truck is in. Numbers are shown as
 precisely as the forecast, so 44.6 mph never shows as 45 and looks severe. Colour is never the
 only signal: every level also has a word or a symbol.
@@ -100,7 +106,7 @@ the weather is calm today, show the rule in `risk.py` instead (next part).
 - `backend/trips/services/plan_trip.py`: the pipeline from routes to checkpoints, ETAs, one
   weather call, risk, recommendation and corridor. Providers come in through `ports.py`, so the
   vendors could be swapped and tests use fakes.
-- Run `make check`: lint, strict types and 416 tests (257 backend, 159 frontend) at 100% coverage.
+- Run `make check`: lint, strict types and 491 tests (274 backend, 217 frontend) at 100% coverage.
   Built test-first. Every edge of the risk table has a test, and the provider adapters are tested
   against stubs of the vendors' documented responses, never the network.
 

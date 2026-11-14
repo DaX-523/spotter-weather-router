@@ -48,6 +48,9 @@
   --color-risk-severe: var(--risk-severe);
   --color-risk-no-travel: var(--risk-no-travel);
   --color-risk-unknown: var(--risk-unknown);
+  --color-us-flag-red: var(--us-flag-red);
+  --color-us-flag-blue: var(--us-flag-blue);
+  --color-us-flag-white: var(--us-flag-white);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -101,6 +104,13 @@
   --risk-severe: oklch(0.55 0.22 27);
   --risk-no-travel: oklch(0.32 0.12 15);
   --risk-unknown: oklch(0.6 0.02 260);
+  /* The US flag in the header badge: Old Glory red and blue. */
+  --us-flag-red: oklch(0.47 0.18 22);
+  --us-flag-blue: oklch(0.33 0.1 280);
+  --us-flag-white: oklch(1 0 0);
+  /* Trip endpoints on the map: a green truck at the start, a red pin at the end. */
+  --map-origin: oklch(0.55 0.15 155);
+  --map-destination: oklch(0.58 0.22 27);
 }
 
 .dark {
@@ -194,4 +204,179 @@
 .corridor-pane {
   filter: blur(12px);
   pointer-events: none;
+}
+
+/* Low-risk checkpoints: a small dot inside a bigger, invisible hit area, so it is easy to tap. */
+.checkpoint-dot {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+.checkpoint-dot::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border: 2px solid white;
+  border-radius: 9999px;
+  background: var(--risk-low);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+}
+
+/* Trip endpoints (src/lib/map-markers.ts): a truck disc at the origin, a flag pin at the
+   destination. A small badge shows the risk there when it isn't low. */
+.endpoint-marker {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.35));
+}
+.endpoint-marker svg {
+  position: relative;
+  width: 55%;
+  height: 55%;
+}
+.endpoint-marker[data-endpoint="origin"] {
+  border: 3px solid white;
+  border-radius: 9999px;
+  background: var(--map-origin);
+}
+.endpoint-marker[data-endpoint="destination"] {
+  align-items: flex-start;
+  padding-top: 18%;
+}
+.endpoint-marker[data-endpoint="destination"]::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 25% 0;
+  border: 3px solid white;
+  border-radius: 50% 50% 50% 0;
+  background: var(--map-destination);
+  rotate: -45deg;
+  transform-origin: center;
+}
+.endpoint-marker[data-endpoint="destination"] svg {
+  width: 50%;
+  height: 50%;
+}
+.endpoint-marker:not([data-level="low"])::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid white;
+  border-radius: 9999px;
+}
+.endpoint-marker[data-level="moderate"]::after {
+  background: var(--risk-moderate);
+}
+.endpoint-marker[data-level="high"]::after {
+  background: var(--risk-high);
+}
+.endpoint-marker[data-level="severe"]::after {
+  background: var(--risk-severe);
+}
+.endpoint-marker[data-level="no_travel"]::after {
+  background: var(--risk-no-travel);
+}
+.endpoint-marker[data-level="unknown"]::after {
+  background: var(--risk-unknown);
+}
+
+/* The planning pop-up (src/components/trip-planner/planning-overlay.tsx): a truck driving on
+   while weather passes by. Still for drivers who prefer reduced motion. */
+.planning-scene {
+  position: relative;
+  height: 76px;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  background: linear-gradient(var(--muted), transparent);
+}
+.planning-road {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 12px;
+  height: 3px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--muted-foreground) 0 14px,
+    transparent 14px 26px
+  );
+  opacity: 0.5;
+  animation: planning-road 0.5s linear infinite;
+}
+.planning-truck {
+  position: absolute;
+  bottom: 15px;
+  left: 50%;
+  width: 34px;
+  height: 34px;
+  translate: -50% 0;
+  color: var(--map-route);
+  animation: planning-bounce 0.5s ease-in-out infinite;
+}
+.planning-weather {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  color: var(--muted-foreground);
+  opacity: 0;
+  animation: planning-drift 3s linear infinite;
+}
+.planning-weather:nth-of-type(2) {
+  animation-delay: -1s;
+}
+.planning-weather:nth-of-type(3) {
+  animation-delay: -2s;
+}
+@keyframes planning-road {
+  to {
+    background-position: -26px 0;
+  }
+}
+@keyframes planning-bounce {
+  50% {
+    translate: -50% -2px;
+  }
+}
+@keyframes planning-drift {
+  from {
+    translate: 130px 0;
+    opacity: 0;
+  }
+  15%,
+  85% {
+    opacity: 1;
+  }
+  to {
+    translate: -150px 0;
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .planning-road,
+  .planning-truck,
+  .planning-weather {
+    animation: none;
+  }
+  /* Still: the three weather icons spread across the sky above the truck. */
+  .planning-weather {
+    opacity: 1;
+    translate: none;
+    left: 20%;
+  }
+  .planning-weather:nth-of-type(2) {
+    left: 45%;
+  }
+  .planning-weather:nth-of-type(3) {
+    left: 70%;
+  }
 }

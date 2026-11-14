@@ -53,12 +53,27 @@ describe("TripPlanner", () => {
     expect(planTrip).not.toHaveBeenCalled();
   });
 
-  it("says it is planning while the first plan is on its way", () => {
+  it("shows what the planner is doing while the first plan is on its way", () => {
     vi.mocked(planTrip).mockReturnValue(new Promise(() => {}));
 
     visit(TRIP_QUERY);
 
-    expect(screen.getByRole("status")).toHaveTextContent("Planning your trip…");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Finding truck routes…",
+    );
+    expect(screen.getByText("Planning your trip…")).toBeInTheDocument();
+  });
+
+  it("puts the start and end of the trip on the map", async () => {
+    vi.mocked(planTrip).mockResolvedValue(TRIP_PLAN);
+
+    visit(TRIP_QUERY);
+    await screen.findByRole("list", { name: "Routes" });
+
+    expect(mapProps()?.endpoints).toEqual({
+      origin: CHICAGO,
+      destination: DENVER,
+    });
   });
 
   it("plans the trip in the URL and lists its routes", async () => {

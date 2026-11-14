@@ -43,7 +43,43 @@ def test_plans_routes_with_checkpoints_etas_and_weather(api_client: APIClient) -
         "eta": "2026-11-14T15:00:00Z",
         "weather": {"wind_speed_mph": 5.0, "rain_in": 0.0, "snowfall_in": 0.0},
         "risk": {"level": "low", "hazards": []},
+        "time_zone": "America/Chicago",
     }
+
+
+def test_names_the_time_zones_times_should_be_shown_in(api_client: APIClient) -> None:
+    body = api_client.post(URL, VALID, format="json").json()
+
+    assert (body["origin_time_zone"], body["destination_time_zone"]) == (
+        "America/Chicago",
+        "America/Denver",
+    )
+
+
+@pytest.mark.parametrize("load_lb", [1, 80_000], ids=["one-pound", "federal-limit"])
+def test_accepts_loads_up_to_the_federal_limit(api_client: APIClient, load_lb: int) -> None:
+    response = api_client.post(URL, VALID | {"load_weight_lb": load_lb}, format="json")
+
+    assert response.status_code == 200
+
+
+@pytest.mark.parametrize(
+    ("load", "message"),
+    [
+        (80_000.1, "Load weight can be at most 80,000 lb, the federal limit."),
+        (183_024_823_092_434, "Load weight can be at most 80,000 lb, the federal limit."),
+        (0, "Load weight must be more than 0 lb."),
+        ("NaN", "A valid number is required."),
+    ],
+    ids=["just-over-the-limit", "billions", "zero", "not-a-number"],
+)
+def test_rejects_loads_outside_the_legal_range(
+    api_client: APIClient, load: float | str, message: str
+) -> None:
+    response = api_client.post(URL, VALID | {"load_weight_lb": load}, format="json")
+
+    assert response.status_code == 400
+    assert response.json() == {"load_weight_lb": [message]}
 
 
 def test_rates_each_route_and_recommends_one(api_client: APIClient) -> None:

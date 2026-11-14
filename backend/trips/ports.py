@@ -29,6 +29,13 @@ class PlaceSearch(Protocol):
         ...
 
 
+class TimeZoneLookup(Protocol):
+    def zone_at(self, point: Coordinate) -> str:
+        """The IANA time zone at a point, e.g. "America/Chicago": times are shown in local time
+        where they happen."""
+        ...
+
+
 class WeatherProvider(Protocol):
     def hourly(
         self, points: Sequence[Coordinate], start: datetime, end: datetime

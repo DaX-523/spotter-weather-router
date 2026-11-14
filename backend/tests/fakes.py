@@ -68,6 +68,15 @@ class FakePlaceSearch:
         return self.result
 
 
+class FakeTimeZones:
+    """Central time east of 102°W, Mountain time west of it: enough for Chicago and Denver."""
+
+    def zone_at(self, point: Coordinate) -> str:
+        return "America/Chicago" if point.lon > CENTRAL_WEST_EDGE_LON else "America/Denver"
+
+
+CENTRAL_WEST_EDGE_LON = -102
+
 Readings = Callable[[Coordinate, datetime], HourlyWeather]
 
 

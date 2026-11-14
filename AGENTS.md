@@ -157,14 +157,19 @@ backend. These are requirements, not suggestions.
 - **US units everywhere.** The app is for US drivers, so the code, the API and the UI all use
   miles, pounds, degrees Fahrenheit, miles per hour and inches of precipitation. Metric is a "not
   now" in `artifacts/REQUIREMENTS.md`. Provider adapters convert vendor units at the edge (TomTom
-  speaks metres and kilograms), so arithmetic only ever happens in US units.
+  speaks metres and kilograms), so arithmetic only ever happens in US units. The one exception:
+  the driver may type the load in kilograms, and `frontend/src/lib/load.ts` converts it to pounds
+  before anything else sees it.
 - **Put the unit in the name** wherever the type doesn't carry it: `distance_mi`, `duration_s`,
   `load_weight_lb`, `wind_speed_mph`, `temperature_f`, `precipitation_in`. The same names are
   used on the wire.
 - **Floats are fine here, but float equality is not.** Compare computed values with an explicit
   tolerance (`pytest.approx`, `toBeCloseTo`), and round for display to a named precision.
 - **Time is timezone-aware and stored in UTC** (`USE_TZ = True`). It travels as ISO 8601 with an
-  offset and is converted to the driver's zone only for display. Durations are integer seconds.
+  offset. **It is shown in local time where it happens** (owner's decision): the departure in
+  the origin's zone, each ETA in its checkpoint's zone, arrival in the destination's, always with
+  the zone's name (CST, MST). The API sends each place's and checkpoint's IANA zone; never format
+  a time in the viewer's own zone. Durations are integer seconds.
   Logic gets the current time from an injected clock, never from `datetime.now()` or
   `Date.now()`.
 - **Coordinates are always named, never positional.** GeoJSON and many routing APIs order points

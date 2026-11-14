@@ -79,6 +79,10 @@ Create a directory when the first module needs it.
 - The map draws on a canvas, which can't read CSS variables. Map colours are still theme tokens:
   `themeColor()` in `lib/theme.ts` resolves them when drawing.
 - Checkpoint popups render app components (`CheckpointDetails`), which are tested like any other.
+- Every marker (checkpoints and the trip's endpoints) is a DOM `Marker`, so it lives in Leaflet's
+  marker pane, always above the route lines. Don't draw markers as canvas circles: they share the
+  lines' canvas and their order flips when the selected route changes.
+- Route lines use a canvas renderer with a 12 px click tolerance, so a thin line is easy to pick.
 - The corridor heatmap is one circle per corridor point, in its level's exact colour, on its own
   canvas pane that `.corridor-pane` blurs. Don't swap in an additive heatmap such as
   `leaflet.heat`: overlapping low-risk points would add up and look riskier than they are.
@@ -96,7 +100,11 @@ Create a directory when the first module needs it.
 - Type props explicitly and never use `any`. API request and response types are defined once, in
   `lib/api/types.ts`, not ad hoc in each component.
 - Units: the API already speaks US units (`distance_mi`, `temperature_f`). `lib/format.ts` only
-  formats them for display (rounding, unit labels), and components never do unit arithmetic.
+  formats them for display (rounding, unit labels), and components never do unit arithmetic. The
+  load may be typed in kilograms; `lib/load.ts` converts it to pounds at the input.
+- Times: format them with `formatClock(iso, timeZone)`, passing the zone where the moment happens
+  (a checkpoint's `time_zone`, the plan's `origin_time_zone` or `destination_time_zone`). The
+  departure input is read and written in the origin's zone with `lib/datetime.ts`.
 - Make components accessible by default: semantic elements, labelled form controls, `<button>`
   for actions. Risk is never shown by colour alone: it always has a text label too, and an icon
   where one helps. The tests below depend on this.

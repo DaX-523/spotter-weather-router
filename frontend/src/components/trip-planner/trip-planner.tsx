@@ -3,12 +3,14 @@ import { useDeferredValue, useMemo, useState } from "react";
 import { TripMap } from "@/components/map";
 import { ForecastSlider } from "@/components/trip-planner/forecast-slider";
 import { PlanStatus } from "@/components/trip-planner/plan-status";
+import { PlanningOverlay } from "@/components/trip-planner/planning-overlay";
 import { RiskLegend } from "@/components/trip-planner/risk-badge";
 import { RouteList } from "@/components/trip-planner/route-list";
 import { TripForm } from "@/components/trip-planner/trip-form";
 import { useTripQuery } from "@/hooks/use-trip-query";
 import { ApiError, type Route } from "@/lib/api";
-import { selectedRouteId } from "@/lib/map";
+import { DEFAULT_TIME_ZONE } from "@/lib/datetime";
+import { selectedRouteId, type Endpoints } from "@/lib/map";
 import { tripQueryToSearch, tripRequestFrom } from "@/lib/trip-query";
 import { useTripPlan } from "@/queries/trip-plan";
 
@@ -25,6 +27,14 @@ export function TripPlanner() {
   const [forecastHour, setForecastHour] = useState(0);
   // The slider answers at once; the map catches up when React has a moment.
   const mapHour = useDeferredValue(forecastHour);
+
+  const endpoints = useMemo<Endpoints | null>(
+    () =>
+      query.origin && query.destination
+        ? { origin: query.origin, destination: query.destination }
+        : null,
+    [query.origin, query.destination],
+  );
 
   const routes = plan.data?.routes ?? NO_ROUTES;
   const recommendedRouteId = plan.data?.recommendation.route_id ?? null;
@@ -47,6 +57,9 @@ export function TripPlanner() {
         <RouteList
           routes={routes}
           recommendedRouteId={recommendedRouteId}
+          destinationTimeZone={
+            plan.data?.destination_time_zone ?? DEFAULT_TIME_ZONE
+          }
           selectedRouteId={selected}
           onSelect={setChosenRouteId}
         />
@@ -57,6 +70,7 @@ export function TripPlanner() {
           routes={routes}
           selectedRouteId={selected}
           onSelectRoute={setChosenRouteId}
+          endpoints={endpoints}
           corridor={plan.data?.corridor ?? null}
           corridorHour={mapHour}
           spacingMi={plan.data?.spacing_mi ?? 0}
@@ -66,11 +80,13 @@ export function TripPlanner() {
           <div className="absolute inset-x-3 bottom-6 z-[1001] md:right-auto md:w-96">
             <ForecastSlider
               startAt={plan.data.corridor.start_at}
+              timeZone={plan.data.origin_time_zone}
               hour={forecastHour}
               onChange={setForecastHour}
             />
           </div>
         )}
+        {plan.isFetching && <PlanningOverlay />}
       </div>
     </main>
   );

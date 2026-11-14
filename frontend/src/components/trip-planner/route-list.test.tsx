@@ -11,6 +11,7 @@ function renderList(selectedRouteId = 1) {
     <RouteList
       routes={TRIP_PLAN.routes}
       recommendedRouteId={1}
+      destinationTimeZone="America/Denver"
       selectedRouteId={selectedRouteId}
       onSelect={onSelect}
     />,
@@ -25,7 +26,8 @@ describe("RouteList", () => {
     renderList();
 
     expect(card(/Route 1/)).toHaveTextContent("1,004 mi · 15 h");
-    expect(card(/Route 1/)).toHaveTextContent("Arrives Sun, 12:00 AM CST");
+    // 06:00 UTC on Sunday is 11:00 PM on Saturday in Denver, the destination.
+    expect(card(/Route 1/)).toHaveTextContent("Arrives Sat, 11:00 PM MST");
     expect(screen.getAllByRole("button")).toHaveLength(3);
   });
 

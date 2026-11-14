@@ -10,6 +10,24 @@ function detail(term: string) {
 }
 
 describe("CheckpointDetails", () => {
+  it("can be titled instead, for the origin and destination", () => {
+    render(
+      <CheckpointDetails
+        checkpoint={CLEAR_START}
+        title="Origin · Chicago, IL"
+      />,
+    );
+
+    expect(screen.getByText("Origin · Chicago, IL")).toBeInTheDocument();
+    expect(screen.queryByText("Mile 0")).not.toBeInTheDocument();
+  });
+
+  it("shows the ETA in local time where the truck will be", () => {
+    render(<CheckpointDetails checkpoint={UNKNOWN_END} />);
+
+    expect(detail("ETA")).toHaveTextContent("Sat, 11:00 PM MST");
+  });
+
   it("names the checkpoint by its mile marker and its risk", () => {
     render(<CheckpointDetails checkpoint={WINDY_MILE_50} />);
 

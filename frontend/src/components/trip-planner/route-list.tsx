@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 type Props = {
   routes: Route[];
   recommendedRouteId: number | null;
+  /** Arrival is shown in the destination's local time. */
+  destinationTimeZone: string;
   selectedRouteId: number | null;
   onSelect: (routeId: number) => void;
 };
@@ -16,6 +18,7 @@ type Props = {
 export function RouteList({
   routes,
   recommendedRouteId,
+  destinationTimeZone,
   selectedRouteId,
   onSelect,
 }: Props) {
@@ -51,7 +54,7 @@ export function RouteList({
                 {formatDuration(route.duration_s)}
               </span>
               <span className="text-muted-foreground">
-                Arrives {formatClock(route.arrival_at)}
+                Arrives {formatClock(route.arrival_at, destinationTimeZone)}
               </span>
               <span className="text-muted-foreground">
                 {riskMiles(route.risk)}

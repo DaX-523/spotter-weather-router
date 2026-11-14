@@ -1,5 +1,6 @@
 // The trip lives in the URL, so a plan survives a reload, can be shared, and works with Back.
 import type { Coordinate, Place, TripPlanRequest } from "@/lib/api";
+import { isValidTimeZone } from "@/lib/datetime";
 
 export type TripQuery = {
   origin: Place | null;
@@ -50,7 +51,10 @@ function readPlace(params: URLSearchParams, prefix: string): Place | null {
     params.get(`${prefix}_lat`),
     params.get(`${prefix}_lon`),
   );
-  return name && coordinate ? { name, coordinate } : null;
+  const timeZone = params.get(`${prefix}_tz`) ?? "";
+  return name && coordinate && isValidTimeZone(timeZone)
+    ? { name, coordinate, time_zone: timeZone }
+    : null;
 }
 
 function writePlace(
@@ -62,6 +66,7 @@ function writePlace(
   params.set(prefix, place.name);
   params.set(`${prefix}_lat`, String(place.coordinate.lat));
   params.set(`${prefix}_lon`, String(place.coordinate.lon));
+  params.set(`${prefix}_tz`, place.time_zone);
 }
 
 function readCoordinate(

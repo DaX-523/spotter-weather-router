@@ -7,10 +7,12 @@ export const NOW = new Date("2026-11-14T15:00:00Z");
 export const CHICAGO: Place = {
   name: "Chicago, IL",
   coordinate: { lat: 41.8781, lon: -87.6298 },
+  time_zone: "America/Chicago",
 };
 export const DENVER: Place = {
   name: "Denver, CO",
   coordinate: { lat: 39.7392, lon: -104.9903 },
+  time_zone: "America/Denver",
 };
 
 export const TRIP_QUERY: TripQuery = {
@@ -26,6 +28,7 @@ export const CLEAR_START: Checkpoint = {
   eta: "2026-11-14T15:00:00Z",
   weather: { wind_speed_mph: 12.4, rain_in: 0, snowfall_in: 0 },
   risk: { level: "low", hazards: [] },
+  time_zone: "America/Chicago",
 };
 
 export const WINDY_MILE_50: Checkpoint = {
@@ -40,6 +43,7 @@ export const WINDY_MILE_50: Checkpoint = {
       { kind: "rain", level: "moderate", reason: "Rain 0.12 in/hr" },
     ],
   },
+  time_zone: "America/Chicago",
 };
 
 export const UNKNOWN_END: Checkpoint = {
@@ -55,6 +59,7 @@ export const UNKNOWN_END: Checkpoint = {
       { kind: "snow", level: "unknown", reason: "No snow forecast" },
     ],
   },
+  time_zone: "America/Denver",
 };
 
 const CLEAR: RouteRisk = {
@@ -127,6 +132,8 @@ export const TRIP_PLAN: TripPlan = {
     }),
   ],
   recommendation: { route_id: 1, reason: "Fewest miles in severe conditions" },
+  origin_time_zone: "America/Chicago",
+  destination_time_zone: "America/Denver",
   corridor: {
     start_at: "2026-11-14T15:00:00Z",
     points: [
