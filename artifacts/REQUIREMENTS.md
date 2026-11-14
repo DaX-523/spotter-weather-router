@@ -31,3 +31,8 @@ The app should:
 • Show a weather heatmap along the trip corridor with a 0–48 hour forecast slider.
 
 - not going to get through the overhead of buidling a routing engine and adding algorithms of graphs, lets use apis externally
+
+key decisions:
+- not adding db and keeping it stateless, introducing auth and state so user may login and check their past history is a not now, but the app is to be flexible to adapt later.
+-  One response, one weather call.
+- assumption: a checkpoint's ETA = departure + route duration × the share of the route's distance covered so far. This assumes a constant average speed.
