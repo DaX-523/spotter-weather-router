@@ -1,0 +1,74 @@
+{
+  "formatVersion": "0.0.12",
+  "routes": [
+    {
+      "summary": {
+        "lengthInMeters": 1609344,
+        "travelTimeInSeconds": 54000,
+        "trafficDelayInSeconds": 0,
+        "trafficLengthInMeters": 0,
+        "departureTime": "2026-11-14T15:00:00+00:00",
+        "arrivalTime": "2026-11-15T06:00:00+00:00"
+      },
+      "legs": [
+        {
+          "summary": { "lengthInMeters": 1609344, "travelTimeInSeconds": 54000 },
+          "points": [
+            { "latitude": 41.8781, "longitude": -87.6298 },
+            { "latitude": 41.2, "longitude": -95.9 },
+            { "latitude": 39.7392, "longitude": -104.9903 }
+          ]
+        }
+      ],
+      "sections": [
+        { "startPointIndex": 0, "endPointIndex": 2, "sectionType": "TRAVEL_MODE", "travelMode": "truck" }
+      ]
+    },
+    {
+      "summary": {
+        "lengthInMeters": 1650000,
+        "travelTimeInSeconds": 55800,
+        "trafficDelayInSeconds": 120,
+        "trafficLengthInMeters": 2100,
+        "departureTime": "2026-11-14T15:00:00+00:00",
+        "arrivalTime": "2026-11-15T06:30:00+00:00"
+      },
+      "legs": [
+        {
+          "summary": { "lengthInMeters": 1650000, "travelTimeInSeconds": 55800 },
+          "points": [
+            { "latitude": 41.8781, "longitude": -87.6298 },
+            { "latitude": 40.8, "longitude": -96.7 },
+            { "latitude": 39.7392, "longitude": -104.9903 }
+          ]
+        }
+      ],
+      "sections": [
+        { "startPointIndex": 0, "endPointIndex": 2, "sectionType": "TRAVEL_MODE", "travelMode": "truck" }
+      ]
+    },
+    {
+      "summary": {
+        "lengthInMeters": 1700000,
+        "travelTimeInSeconds": 57600,
+        "trafficDelayInSeconds": 0,
+        "trafficLengthInMeters": 0,
+        "departureTime": "2026-11-14T15:00:00+00:00",
+        "arrivalTime": "2026-11-15T07:00:00+00:00"
+      },
+      "legs": [
+        {
+          "summary": { "lengthInMeters": 1700000, "travelTimeInSeconds": 57600 },
+          "points": [
+            { "latitude": 41.8781, "longitude": -87.6298 },
+            { "latitude": 42.5, "longitude": -96.4 },
+            { "latitude": 39.7392, "longitude": -104.9903 }
+          ]
+        }
+      ],
+      "sections": [
+        { "startPointIndex": 0, "endPointIndex": 2, "sectionType": "TRAVEL_MODE", "travelMode": "truck" }
+      ]
+    }
+  ]
+}

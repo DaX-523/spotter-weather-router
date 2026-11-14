@@ -1,4 +1,8 @@
-"""When the truck reaches a point, and which forecast hour describes that moment."""
+"""When the truck reaches a point, and which forecast hour describes that moment.
+
+Hourly forecasts are labelled by the hour. Instant readings (wind) are valid at that moment;
+hourly totals (rain, snow) cover the hour that *ends* at the label.
+"""
 
 from datetime import UTC, datetime, timedelta
 
@@ -19,10 +23,22 @@ def eta_at(
     return departure + timedelta(seconds=elapsed_s)
 
 
-def forecast_hour_for(moment: datetime) -> datetime:
-    """The whole UTC hour nearest to `moment`; half past rounds up."""
+def nearest_hour(moment: datetime) -> datetime:
+    """For instant readings such as wind: the whole UTC hour nearest to `moment`; half past
+    rounds up."""
+    utc_moment, hour = _utc_and_hour_start(moment)
+    return hour + ONE_HOUR if utc_moment - hour >= HALF_HOUR else hour
+
+
+def end_of_hour(moment: datetime) -> datetime:
+    """For hourly totals such as rain and snow: the label of the hour the truck is in. A moment
+    exactly on the hour closes the hour before it."""
+    utc_moment, hour = _utc_and_hour_start(moment)
+    return hour if utc_moment == hour else hour + ONE_HOUR
+
+
+def _utc_and_hour_start(moment: datetime) -> tuple[datetime, datetime]:
     if moment.tzinfo is None:
         raise ValueError("Time must include a timezone")
     utc_moment = moment.astimezone(UTC)
-    hour = utc_moment.replace(minute=0, second=0, microsecond=0)
-    return hour + ONE_HOUR if utc_moment - hour >= HALF_HOUR else hour
+    return utc_moment, utc_moment.replace(minute=0, second=0, microsecond=0)

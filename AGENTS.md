@@ -91,8 +91,9 @@ backend. These are requirements, not suggestions.
 - **Fast.** Unit tests never touch a real network, real database or the real clock, and never
   sleep. The whole suite runs in seconds. Behaviour that only a database can prove (constraints,
   migrations, queries) belongs in the backend's integration tests.
-- **Never call a third-party API from a test.** Adapters are tested against recorded responses
-  saved in the repo. Everything else is tested with in-memory fakes of the ports.
+- **Never call a third-party API from a test.** Adapters are tested against hand-written stubs
+  shaped like the vendor's documented responses. Everything else is tested with in-memory fakes of
+  the ports.
 - **Deterministic.** Same result on every run, in any order, on any machine. Inject or freeze time,
   randomness, generated IDs, locale and timezone. No state shared between tests. A flaky test is a
   bug: fix it, never retry it.

@@ -59,7 +59,8 @@ config/            the Django project: wiring only
 tests/             mirrors the apps: trips/services/plan_trip.py ↔ tests/trips/services/test_plan_trip.py
   conftest.py      shared fixtures, including the API client with fakes wired in
   fakes.py         in-memory fakes for every port, plus make_* builders for domain objects
-  fixtures/        recorded provider responses, one folder per vendor
+  stubs/           hand-written provider responses shaped like the vendor docs, one folder per
+                   vendor; provider_stubs.py loads them and builds MockTransport clients
 ```
 
 Create a directory when the first module needs it. Don't add empty layers, and don't create a
@@ -154,10 +155,10 @@ and follow these rules:
 - Swap collaborators only at the wiring seam (the `api_client` fixture), or by passing fakes into a
   service. Never patch services, domain code or httpx. Prefer simple in-memory fakes to
   `unittest.mock` chains.
-- Adapter tests replay the recorded responses in `tests/fixtures/<vendor>/` through
-  `httpx.MockTransport`: no network, and every run is identical. Cover success, empty results,
-  timeouts, non-2xx and malformed bodies. When recording a new fixture, strip API keys and
-  personal data from it.
+- Adapter tests serve the stubs in `tests/stubs/<vendor>/` through `httpx.MockTransport`: no
+  network, and every run is identical. Cover success, empty results, timeouts, non-2xx and
+  malformed bodies. Base each stub on the vendor's documented response shape, and keep it to the
+  fields the adapter reads plus enough context to look real.
 - Table-drive edge cases with `@pytest.mark.parametrize(..., ids=[...])`, using ids that name each
   case. Every threshold gets cases at, just under and just over its boundary.
 - Fixtures belong in the nearest `conftest.py`. Keep them small and explicit, with no module-level
