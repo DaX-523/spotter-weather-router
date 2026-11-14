@@ -83,6 +83,17 @@ Create a directory when the first module needs it.
   marker pane, always above the route lines. Don't draw markers as canvas circles: they share the
   lines' canvas and their order flips when the selected route changes.
 - Route lines use a canvas renderer with a 12 px click tolerance, so a thin line is easy to pick.
+- The map follows its own box: a `ResizeObserver` calls `invalidateSize()` on every frame of the
+  trip panel's slide, keeping the centre, so the routes glide with the panel. `fitPadding()` in
+  `lib/map.ts` frames the routes above the forecast panel where the map is tall enough.
+- The truck's ring at the slider's hour is a non-interactive marker under the checkpoint
+  markers, so it never hides or blocks a hazard symbol.
+- Open-Meteo's licence (CC BY 4.0) requires credit wherever its data shows: the forecast panel
+  links to it. Keep that link if the panel changes.
+- The forecast panel rests folded and peeks open for about a second after each plan
+  (`hooks/use-peek.ts`), to show there is more inside. Drivers who prefer reduced motion get no
+  peek; a click during one keeps the panel open. The details open above the slider, so the
+  slider never moves under the driver's finger.
 - The corridor heatmap is one circle per corridor point, in its level's exact colour, on its own
   canvas pane that `.corridor-pane` blurs. Don't swap in an additive heatmap such as
   `leaflet.heat`: overlapping low-risk points would add up and look riskier than they are.
@@ -139,5 +150,9 @@ Create a directory when the first module needs it.
 - Tests run in the `America/Chicago` time zone (`vitest.config.ts`), so local times shown to
   drivers are deterministic.
 - Wait for async UI with `findBy*` or `waitFor`, never with arbitrary delays.
+- With fake `setTimeout`, user-event hangs unless the clock also moves with real time: Testing
+  Library's async wrapper waits on a `setTimeout(0)`. Fake timers with `shouldAdvanceTime: true`
+  and pass `advanceTimers: (ms) => vi.advanceTimersByTime(ms)` to `userEvent.setup` (see
+  `forecast-panel.test.tsx`).
 - Compare computed numbers with `toBeCloseTo`, and assert on the formatted text the user sees.
 - `main.tsx` is excluded from coverage, so it must stay free of logic.

@@ -35,9 +35,10 @@ def plan(
     request: TripRequest = REQUEST,
     routing: FakeRouting | None = None,
     weather: FakeWeather | None = None,
+    now: datetime = NOW,
 ) -> TripPlan:
     return plan_trip(
-        request, routing or FakeRouting(), weather or FakeWeather(), FakeTimeZones(), now=NOW
+        request, routing or FakeRouting(), weather or FakeWeather(), FakeTimeZones(), now=now
     )
 
 
@@ -197,6 +198,51 @@ def test_rates_the_corridor_around_every_checkpoint_for_the_next_48_hours() -> N
     assert len(corridor.points) == 8
     assert {len(point.levels) for point in corridor.points} == {49}
     assert {level for point in corridor.points for level in point.levels} == {RiskLevel.MODERATE}
+
+
+# Planned 49 minutes past the hour, leaving at once.
+PLANNED_AT = NOW + timedelta(minutes=49)
+
+
+def test_starts_the_corridor_at_the_moment_of_planning_not_the_top_of_the_hour() -> None:
+    request = replace(NORTHBOUND, departure=PLANNED_AT)
+
+    corridor = plan(
+        request, routing=FakeRouting(result=[NORTHBOUND_ROUTE]), now=PLANNED_AT
+    ).corridor
+
+    assert corridor.start_at == PLANNED_AT
+
+
+def test_rates_each_corridor_hour_at_its_exact_moment() -> None:
+    def windy_at_16(_: Coordinate, time: datetime) -> HourlyWeather:
+        wind_mph = 30 if time == NOW + timedelta(hours=1) else 0
+        return HourlyWeather(time, wind_speed_mph=wind_mph, rain_in=0, snowfall_in=0)
+
+    request = replace(NORTHBOUND, departure=PLANNED_AT)
+
+    corridor = plan(
+        request,
+        routing=FakeRouting(result=[NORTHBOUND_ROUTE]),
+        weather=FakeWeather(readings=windy_at_16),
+        now=PLANNED_AT,
+    ).corridor
+
+    # Hour 0 is 15:49, whose nearest hour for wind is 16:00.
+    assert corridor.points[0].levels[0] == RiskLevel.MODERATE
+
+
+def test_fetches_from_the_hour_now_is_in_to_the_hour_after_48_hours_ahead() -> None:
+    weather = FakeWeather()
+    request = replace(NORTHBOUND, departure=PLANNED_AT)
+
+    plan(request, routing=FakeRouting(result=[NORTHBOUND_ROUTE]), weather=weather, now=PLANNED_AT)
+
+    # The slider ends at 15:49 on the 16th: wind from 16:00, rain and snow in the hour to 16:00.
+    assert (weather.calls[0].start, weather.calls[0].end) == (
+        NOW,
+        datetime(2026, 11, 16, 16, tzinfo=UTC),
+    )
 
 
 def test_each_checkpoint_gets_the_weather_at_its_eta() -> None:

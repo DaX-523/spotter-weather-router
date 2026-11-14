@@ -100,9 +100,8 @@ def plan_trip(
     routes = routing.routes(request.origin, request.destination, departure, request.load_weight_lb)
     spacing_mi = checkpoint_spacing_mi(straight_line_mi)
     timed = [_timed_checkpoints(route, spacing_mi, departure) for route in routes]
-    # The slider's hour 0. The departure is never earlier, so this also covers every ETA.
-    corridor_start = start_of_hour(now)
-    forecasts = _forecasts(weather, timed, corridor_start)
+    # The slider's hour 0 is now, to the minute: when the truck leaves at once, its departure.
+    forecasts = _forecasts(weather, timed, now)
     context = _TripContext(departure, request.load_weight_lb, forecasts, zones)
     planned = tuple(
         _planned_route(index, route, checkpoints, context)
@@ -115,7 +114,7 @@ def plan_trip(
         recommendation=recommend(
             [RouteOption(route.id, route.risk, route.duration_s) for route in planned]
         ),
-        corridor=corridor_risk(forecasts, corridor_start, request.load_weight_lb),
+        corridor=corridor_risk(forecasts, now, request.load_weight_lb),
         origin_time_zone=zones.zone_at(request.origin),
         destination_time_zone=zones.zone_at(request.destination),
     )
@@ -139,16 +138,17 @@ def _timed_checkpoints(route: Route, spacing_mi: float, departure: datetime) -> 
 
 
 def _forecasts(
-    weather: WeatherProvider, timed: Sequence[TimedCheckpoints], corridor_start: datetime
+    weather: WeatherProvider, timed: Sequence[TimedCheckpoints], now: datetime
 ) -> dict[Coordinate, PointForecast]:
-    """One request for every distinct checkpoint, covering the slider's 48 hours and every hour
-    any ETA needs, whichever ends later."""
+    """One request for every distinct checkpoint, from the hour `now` is in to the last hour the
+    slider's 48 hours or any ETA needs, whichever ends later. The departure is never before now."""
     points = list(
         dict.fromkeys(checkpoint.coordinate for route in timed for checkpoint, _ in route)
     )
     latest_eta = max(eta for route in timed for _, eta in route)
-    end = max(corridor_start + timedelta(hours=CORRIDOR_HOURS), end_of_hour(latest_eta))
-    forecasts = weather.hourly(points, corridor_start, end)
+    # Rain and snow are read for the hour a moment is in, which ends at or after its wind hour.
+    latest = max(now + timedelta(hours=CORRIDOR_HOURS), latest_eta)
+    forecasts = weather.hourly(points, start_of_hour(now), end_of_hour(latest))
     return dict(zip(points, forecasts, strict=True))
 
 

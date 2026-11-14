@@ -44,3 +44,9 @@ export function endpointMarkerHtml(
   const icon = endpoint === "origin" ? Truck : Flag;
   return `<span class="endpoint-marker" data-endpoint="${endpoint}" data-level="${level}" aria-hidden="true">${icon}</span>`;
 }
+
+/** Where the truck is at the slider's hour: a ring around that checkpoint, with a truck on it.
+ * It sits under the checkpoint's own marker, so the symbol stays visible and clickable. */
+export function truckPositionMarkerHtml(): string {
+  return `<span class="truck-position" aria-hidden="true">${Truck}</span>`;
+}

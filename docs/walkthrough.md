@@ -69,6 +69,8 @@ The line under the recommendation says which of those decided it.
 3. Hover a hazard symbol (wind, rain, snow, a no-entry sign for No Travel, "?" for Unknown), then
    click one. The popup has the mile marker, ETA, wind, rain, snow and the reasons.
 4. Point at the plain green dots: low risk, no symbol.
+5. Click the tab on the map's left edge: the trip panel slides away and the map glides to fill
+   the space. Click it again to bring the panel back.
 
 **Say:** Each checkpoint's weather is the forecast for its ETA, and the ETA is shown in local
 time where the truck will be: Central time near Chicago, Mountain time near Denver. Wind is taken at the nearest
@@ -78,13 +80,25 @@ only signal: every level also has a word or a symbol.
 
 ## 5. The heatmap (3:10–3:50)
 
-**Show:** Drag the **Forecast hour** slider from **Now** to **+48 h**; then use the arrow keys.
-Point at the Network tab: no new requests.
+**Show:**
 
-**Say:** The shading is the forecast risk around every checkpoint, hour by hour, rated with the
-same rules. All 49 hours came with the plan, in the same single weather request, so the slider
-never waits on the network. The colours stay exact: overlapping low-risk shading can't add up and
-look riskier, which a typical additive heatmap would do.
+1. The **Weather ahead** panel: right after the plan arrives it peeks open for a second, then
+   folds. Folded, it keeps the timeline above the slider (taller, warmer bars are worse hours)
+   and the line under it: either the worst level ahead and when, or "Low risk at every
+   checkpoint for the next 48 hours". The tab on its top edge opens the details.
+2. Click the worst hour's time (the dotted link): the slider jumps there and the shading changes
+   colour on the map.
+3. Drag the **Forecast hour** slider from **Now** to **+48 h**, then use the arrow keys. Watch
+   the blue ring: it is the truck, moving along the selected route hour by hour, and the panel
+   says where it is ("Mile 500 of 1,006 mi · ETA Sat, 3:59 PM CST") and the risk there.
+4. Point at the Network tab: no new requests. Point at **Live forecast · Open-Meteo**.
+
+**Say:** The shading is the forecast risk around every checkpoint at that hour, rated with the
+same rules and load. The panel counts the checkpoints at each level, so an all-green map is
+explained, not confusing. The data is live: TomTom's routes and Open-Meteo's forecast, fetched
+when the trip was planned. All 49 hours came with the plan, in the same single weather request,
+so the slider never waits on the network. The colours stay exact: overlapping low-risk shading
+can't add up and look riskier, which a typical additive heatmap would do.
 
 ## 6. The load matters (3:50–4:20)
 
@@ -106,7 +120,7 @@ the weather is calm today, show the rule in `risk.py` instead (next part).
 - `backend/trips/services/plan_trip.py`: the pipeline from routes to checkpoints, ETAs, one
   weather call, risk, recommendation and corridor. Providers come in through `ports.py`, so the
   vendors could be swapped and tests use fakes.
-- Run `make check`: lint, strict types and 491 tests (274 backend, 217 frontend) at 100% coverage.
+- Run `make check`: lint, strict types and 542 tests (277 backend, 265 frontend) at 100% coverage.
   Built test-first. Every edge of the risk table has a test, and the provider adapters are tested
   against stubs of the vendors' documented responses, never the network.
 

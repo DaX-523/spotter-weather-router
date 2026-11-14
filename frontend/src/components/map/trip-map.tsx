@@ -22,12 +22,25 @@ import {
 } from "react-leaflet";
 
 import { CheckpointDetails } from "@/components/trip-planner/checkpoint-details";
-import type { Checkpoint, Corridor, RiskLevel, Route } from "@/lib/api";
+import type {
+  Checkpoint,
+  Coordinate,
+  Corridor,
+  RiskLevel,
+  Route,
+} from "@/lib/api";
 import { corridorRadiusMeters } from "@/lib/corridor";
-import { boundsOf, toLatLng, type Endpoints, type LatLng } from "@/lib/map";
+import {
+  boundsOf,
+  fitPadding,
+  toLatLng,
+  type Endpoints,
+  type LatLng,
+} from "@/lib/map";
 import {
   checkpointMarkerHtml,
   endpointMarkerHtml,
+  truckPositionMarkerHtml,
   type Endpoint,
 } from "@/lib/map-markers";
 import {
@@ -42,7 +55,6 @@ import { themeColor } from "@/lib/theme";
 // The contiguous US, before there is a trip to show.
 const US_CENTER: LatLng = [39.5, -98.35];
 const US_ZOOM = 4;
-const FIT_PADDING: LatLng = [32, 32];
 const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 // OpenStreetMap's tile usage policy requires this attribution.
 const TILE_ATTRIBUTION =
@@ -57,8 +69,10 @@ const DOT_SIZE_PX = 22;
 const SYMBOL_SIZE_PX = 26;
 const ORIGIN_SIZE_PX = 32;
 const DESTINATION_SIZE: LatLng = [30, 40];
-// Endpoints sit above every checkpoint marker.
+// Endpoints sit above every checkpoint marker; the truck's ring sits under them.
 const ENDPOINT_Z_OFFSET = 1_000;
+const TRUCK_SIZE_PX = 44;
+const TRUCK_Z_OFFSET = -1_000;
 // The heatmap's own pane, under the routes (overlay pane, 400) and markers (600). `.corridor-pane`
 // in index.css blurs it. Circles keep their level's exact colour: unlike an additive heatmap,
 // overlapping low-risk shading can never add up to look riskier.
@@ -75,6 +89,8 @@ type Props = {
   /** Hours from the corridor's start, 0 to 48. */
   corridorHour: number;
   spacingMi: number;
+  /** Where the truck is at the slider's hour, while it is on the road. */
+  truckAt: Coordinate | null;
 };
 
 export const TripMap = memo(function TripMap({
@@ -85,6 +101,7 @@ export const TripMap = memo(function TripMap({
   corridor,
   corridorHour,
   spacingMi,
+  truckAt,
 }: Props) {
   const bounds = useMemo(() => boundsOf(routes), [routes]);
   const renderer = useMemo(
@@ -105,6 +122,7 @@ export const TripMap = memo(function TripMap({
         className="absolute inset-0"
       >
         <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
+        <FollowContainerSize />
         <FitBounds bounds={bounds} />
         {corridor && (
           <Pane
@@ -137,6 +155,17 @@ export const TripMap = memo(function TripMap({
           />
         )}
         {/* Markers live in Leaflet's marker pane, always above every route line. */}
+        {truckAt && (
+          <Marker
+            position={toLatLng(truckAt)}
+            icon={cachedIcon(truckPositionMarkerHtml(), [
+              TRUCK_SIZE_PX,
+              TRUCK_SIZE_PX,
+            ])}
+            interactive={false}
+            zIndexOffset={TRUCK_Z_OFFSET}
+          />
+        )}
         {checkpoints.slice(1, -1).map((checkpoint) => (
           <CheckpointMarker
             key={checkpoint.mile_marker_mi}
@@ -198,11 +227,24 @@ const CorridorShading = memo(function CorridorShading({
   ));
 });
 
+/** Keeps the map filling its box as the trip panel slides open or shut. It keeps its centre, so
+ * the routes glide along with the panel instead of jumping when it stops. */
+function FollowContainerSize() {
+  const map = useMap();
+  useEffect(() => {
+    // Called on every frame of the panel's slide.
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(map.getContainer());
+    return () => observer.disconnect();
+  }, [map]);
+  return null;
+}
+
 /** Re-frames the map when a new plan arrives, not when the driver picks another route. */
 function FitBounds({ bounds }: { bounds: [LatLng, LatLng] | null }) {
   const map = useMap();
   useEffect(() => {
-    if (bounds) map.fitBounds(bounds, { padding: FIT_PADDING });
+    if (bounds) map.fitBounds(bounds, fitPadding(map.getSize().y));
   }, [map, bounds]);
   return null;
 }

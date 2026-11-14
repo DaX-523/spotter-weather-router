@@ -172,6 +172,37 @@ describe("TripPlanner", () => {
     await vi.waitFor(() => expect(mapProps()?.corridorHour).toBe(1));
   });
 
+  it("puts the truck on the map at the slider's hour, and takes it off once it has arrived", async () => {
+    vi.mocked(planTrip).mockResolvedValue(TRIP_PLAN);
+    const user = userEvent.setup();
+    visit(TRIP_QUERY);
+    await screen.findByRole("list", { name: "Routes" });
+    // The selected route 2 has a single checkpoint: Chicago, at 9:00 AM.
+    expect(mapProps()?.truckAt).toEqual(CHICAGO.coordinate);
+
+    forecastSlider().focus();
+    await user.keyboard("{ArrowRight}");
+
+    await vi.waitFor(() => expect(mapProps()?.truckAt).toBeNull());
+  });
+
+  it("folds the trip panel away and brings it back", async () => {
+    const user = userEvent.setup();
+    visit(null);
+    const panel = screen.getByRole("complementary", { name: "Trip" });
+
+    await user.click(screen.getByRole("button", { name: "Hide trip panel" }));
+
+    expect(panel).toHaveAttribute("inert");
+    const show = screen.getByRole("button", { name: "Show trip panel" });
+    expect(show).toHaveAttribute("aria-expanded", "false");
+    await user.click(show);
+    expect(panel).not.toHaveAttribute("inert");
+    expect(
+      screen.getByRole("button", { name: "Hide trip panel" }),
+    ).toHaveAttribute("aria-expanded", "true");
+  });
+
   it("offers the forecast slider only once there is a plan", () => {
     visit(null);
 

@@ -26,11 +26,22 @@ recommends a route, with the reasons, on a map with a 0–48 hour weather heatma
   lowest average risk, then the shortest time. A route crossing No Travel conditions is never
   recommended, and the app says so when no route is safe.
 - **A corridor heatmap** with a 0–48 h slider: the forecast risk along every route, hour by hour.
+  The slider starts at the minute you plan, so when you leave at once, "Now" is your departure.
+  The forecast panel says what the shading means at each hour. Folded, it shows the slider, a
+  timeline of the worst level ahead, and the worst hour as a link that moves the slider there (or
+  that every hour is low risk, so green is all there is to see). The tab on its top edge opens
+  how many checkpoints are at each level and where the truck will be, drawn on the map as a ring
+  that moves along the route with the slider. Each new plan briefly peeks the details open, so
+  drivers know they are there.
 - **Local time everywhere.** Each ETA is shown in the time zone the truck will be in, and arrival
   in the destination's, labelled CST, MST and so on.
 - **A map that reads like a map app**: a truck marks the start and a flag pin the end, hazard
   symbols mark risky checkpoints, routes are easy to pick (wide click target, hover highlight and
-  tooltip), and a short animation shows what the planner is doing while it works.
+  tooltip), and a short animation shows what the planner is doing while it works. The trip panel
+  slides away for a full-width map (it folds up on phones), and the map glides with it.
+- **Live data, nothing synthetic.** Routes come from TomTom's truck routing and the forecast from
+  Open-Meteo, both fetched when you plan (forecasts are reused for up to 15 minutes). Only the
+  tests use made-up data.
 
 ## Quick start
 
@@ -203,10 +214,10 @@ make test    # fast feedback, both apps
 make check   # lint, formatting, strict types, and tests with a 90% coverage gate
 ```
 
-- **Backend**: 274 tests, 100% line and branch coverage, Ruff, mypy strict. Every edge in the risk
+- **Backend**: 277 tests, 100% line and branch coverage, Ruff, mypy strict. Every edge in the risk
   table has its own test. Provider adapters are tested against hand-written stubs of each
   vendor's documented responses, through `httpx.MockTransport`; no test touches the network.
-- **Frontend**: 217 tests, 100% coverage, ESLint, Prettier, TypeScript strict. Tests drive the UI
+- **Frontend**: 265 tests, 100% coverage, ESLint, Prettier, TypeScript strict. Tests drive the UI
   as a user would (roles, labels, keyboard).
 - **CI** runs `make check` on every push to `main` and every pull request.
 

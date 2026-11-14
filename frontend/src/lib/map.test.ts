@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { boundsOf, selectedRouteId, toLatLng } from "@/lib/map";
+import { boundsOf, fitPadding, selectedRouteId, toLatLng } from "@/lib/map";
 import { TRIP_PLAN } from "@/test/fixtures";
 
 const { routes } = TRIP_PLAN;
@@ -44,5 +44,23 @@ describe("selectedRouteId", () => {
 
   it("is null without routes", () => {
     expect(selectedRouteId([], 1, 1)).toBeNull();
+  });
+});
+
+describe("fitPadding", () => {
+  it.each([
+    ["a tall map", 850, 200],
+    [
+      "the shortest map that fits the routes above the forecast panel",
+      512,
+      200,
+    ],
+    ["a map just too short for that", 511, 32],
+    ["a phone's map", 506, 32],
+  ])("frames the routes on %s", (_, mapHeightPx, bottomPx) => {
+    expect(fitPadding(mapHeightPx)).toEqual({
+      paddingTopLeft: [32, 32],
+      paddingBottomRight: [32, bottomPx],
+    });
   });
 });

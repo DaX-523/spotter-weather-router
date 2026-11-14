@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { checkpointMarkerHtml, endpointMarkerHtml } from "@/lib/map-markers";
+import {
+  checkpointMarkerHtml,
+  endpointMarkerHtml,
+  truckPositionMarkerHtml,
+} from "@/lib/map-markers";
 
 function render(html: string) {
   const host = document.createElement("div");
@@ -60,5 +64,14 @@ describe("endpointMarkerHtml", () => {
       "data-level",
       "severe",
     );
+  });
+});
+
+describe("truckPositionMarkerHtml", () => {
+  it("rings the checkpoint where the truck is, with a truck on the ring", () => {
+    const marker = render(truckPositionMarkerHtml());
+
+    expect(marker).toHaveClass("truck-position");
+    expect(marker.querySelector("svg")).toHaveClass("lucide-truck");
   });
 });

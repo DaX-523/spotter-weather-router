@@ -7,6 +7,31 @@ export type Endpoints = { origin: Place; destination: Place };
 /** Leaflet's point order: latitude first. The one place our named points become pairs. */
 export type LatLng = [number, number];
 
+// Room around the routes when the map frames them.
+const FIT_MARGIN_PX = 32;
+// The forecast panel, folded, covers the bottom of the map up to about this tall. Where the map is
+// tall enough, the routes are framed above it; on a phone that would leave too little room.
+const FORECAST_PANEL_HEIGHT_PX = 200;
+const MIN_ROUTES_HEIGHT_PX = 280;
+
+/** Leaflet's padding for fitting the routes, in pixels from each side. */
+export type FitPadding = {
+  paddingTopLeft: [number, number];
+  paddingBottomRight: [number, number];
+};
+
+export function fitPadding(mapHeightPx: number): FitPadding {
+  const roomAbovePanel = mapHeightPx - FORECAST_PANEL_HEIGHT_PX - FIT_MARGIN_PX;
+  const bottom =
+    roomAbovePanel >= MIN_ROUTES_HEIGHT_PX
+      ? FORECAST_PANEL_HEIGHT_PX
+      : FIT_MARGIN_PX;
+  return {
+    paddingTopLeft: [FIT_MARGIN_PX, FIT_MARGIN_PX],
+    paddingBottomRight: [FIT_MARGIN_PX, bottom],
+  };
+}
+
 export function toLatLng(point: Coordinate): LatLng {
   return [point.lat, point.lon];
 }
