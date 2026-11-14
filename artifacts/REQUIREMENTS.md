@@ -36,3 +36,16 @@ key decisions:
 - not adding db and keeping it stateless, introducing auth and state so user may login and check their past history is a not now, but the app is to be flexible to adapt later.
 -  One response, one weather call.
 - assumption: a checkpoint's ETA = departure + route duration × the share of the route's distance covered so far. This assumes a constant average speed.
+
+risk rules (pinned):
+- wind mph: low <25, moderate 25–34, high 35–44, severe 45–54, no travel ≥55
+- rain in/hr: low <0.10, moderate 0.10–0.25, high 0.25–0.50, severe 0.50–1.00, no travel >1.00
+- snow in/hr: low <0.5, moderate 0.5–1.0, high 1.0–2.0, severe 2.0–3.0, no travel >3.0
+- edges follow the table's signs; shared inner edges go to the higher level
+load rules:
+- ≥55 mph → no travel for any load; 45–54 mph + >30,000 lb → no travel; 35–44 mph + >40,000 lb → severe
+- load weight is the cargo only
+recommendation: never no travel, then fewest severe miles, fewest high miles, lowest average risk, shortest time
+- a stretch takes the worse risk of its two checkpoints; unknown counts as high
+checkpoint spacing (straight-line distance): <150 mi → 10, 150–600 → 25, >600 → 50
+departure: now to 48 h ahead

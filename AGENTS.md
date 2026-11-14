@@ -9,8 +9,9 @@ you are changing. Every `CLAUDE.md` just imports its sibling `AGENTS.md`, so edi
 
 ## Status
 
-Both apps are scaffolded with their quality gates. Features are built in small TDD steps, and the
-owner reviews each step before the next one starts.
+The MVP in `artifacts/REQUIREMENTS.md` is built; `README.md` describes what it does, the rules,
+the decisions and the known limits. New work follows the same loop: small TDD steps, each one
+reviewed by the owner before the next starts.
 
 ## Layout
 
