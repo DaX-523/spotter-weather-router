@@ -15,14 +15,16 @@ function render(html: string) {
 
 describe("checkpointMarkerHtml", () => {
   it("draws a plain dot where the risk is low", () => {
-    const marker = render(checkpointMarkerHtml(null, "low"));
+    const marker = render(checkpointMarkerHtml(null, "low", "Low risk"));
 
     expect(marker).toHaveClass("checkpoint-dot");
     expect(marker.querySelector("svg")).toBeNull();
   });
 
   it("draws the symbol inside a marker coloured for its level", () => {
-    const marker = render(checkpointMarkerHtml("snow", "severe"));
+    const marker = render(
+      checkpointMarkerHtml("snow", "severe", "Severe, snow"),
+    );
 
     expect(marker).toHaveClass("risk-marker");
     expect(marker).toHaveAttribute("data-level", "severe");
@@ -36,15 +38,18 @@ describe("checkpointMarkerHtml", () => {
     ["unknown", "lucide-circle-question-mark"],
   ] as const)("uses a distinct symbol for %s", (symbol, iconClass) => {
     expect(
-      render(checkpointMarkerHtml(symbol, "high")).querySelector("svg"),
+      render(checkpointMarkerHtml(symbol, "high", "High")).querySelector("svg"),
     ).toHaveClass(iconClass);
   });
 
-  it("hides the drawing from screen readers; the marker's title names the risk", () => {
-    expect(render(checkpointMarkerHtml("wind", "high"))).toHaveAttribute(
-      "aria-hidden",
-      "true",
-    );
+  it.each([
+    ["a symbol", "wind", "High, wind"],
+    ["a plain dot", null, "Low risk"],
+  ] as const)("names the risk on %s for screen readers", (_, symbol, label) => {
+    const marker = render(checkpointMarkerHtml(symbol, "high", label));
+
+    expect(marker).toHaveAttribute("role", "img");
+    expect(marker).toHaveAccessibleName(label);
   });
 });
 

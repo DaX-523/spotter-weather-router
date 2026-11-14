@@ -38,7 +38,8 @@ recommends a route, with the reasons, on a map with a 0–48 hour weather heatma
 - **Local time everywhere.** Each ETA is shown in the time zone the truck will be in, and arrival
   in the destination's, labelled CST, MST and so on.
 - **A map that reads like a map app**: a truck marks the start and a flag pin the end, hazard
-  symbols mark risky checkpoints, routes are easy to pick (wide click target, hover highlight and
+  symbols mark risky checkpoints, every sign shows a short summary on hover ("Severe · wind", the
+  numbers, the mile and ETA), routes are easy to pick (wide click target, hover highlight and
   tooltip), and a short animation shows what the planner is doing while it works. The trip panel
   slides away for a full-width map (it folds up on phones), and the map glides with it.
 - **Live data, nothing synthetic.** Routes come from TomTom's truck routing and the forecast from
@@ -256,7 +257,7 @@ make check   # lint, formatting, strict types, and tests with a 90% coverage gat
 - **Backend**: 284 tests, 100% line and branch coverage, Ruff, mypy strict. Every edge in the risk
   table has its own test. Provider adapters are tested against hand-written stubs of each
   vendor's documented responses, through `httpx.MockTransport`; no test touches the network.
-- **Frontend**: 282 tests, 100% coverage, ESLint, Prettier, TypeScript strict. Tests drive the UI
+- **Frontend**: 290 tests, 100% coverage, ESLint, Prettier, TypeScript strict. Tests drive the UI
   as a user would (roles, labels, keyboard).
 - **CI** runs `make check` on every push to `main` and every pull request.
 

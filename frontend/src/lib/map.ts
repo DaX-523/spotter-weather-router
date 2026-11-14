@@ -1,5 +1,7 @@
 // Everything the map shows is computed here, so the Leaflet components stay thin.
-import type { Coordinate, Place, Route } from "@/lib/api";
+import type { Checkpoint, Coordinate, Place, Route } from "@/lib/api";
+import { formatClock, formatMileMarker } from "@/lib/format";
+import { riskHeading } from "@/lib/risk";
 
 /** Where the trip starts and ends, as the driver picked them. */
 export type Endpoints = { origin: Place; destination: Place };
@@ -59,4 +61,21 @@ export function selectedRouteId(
   if (exists(chosen)) return chosen;
   if (exists(recommended)) return recommended;
   return routes[0]?.id ?? null;
+}
+
+/** What hovering a sign on the map says: a heading in bold, then a few short lines. */
+export type MapTooltip = { heading: string; lines: string[] };
+
+/** A checkpoint at a glance: its risk and why, where it is and when the truck gets there. */
+export function checkpointTooltip(checkpoint: Checkpoint): MapTooltip {
+  const { risk } = checkpoint;
+  const eta = formatClock(checkpoint.eta, checkpoint.time_zone);
+  return {
+    heading: riskHeading(risk),
+    lines: [
+      ...risk.hazards.map((hazard) => hazard.reason),
+      `${formatMileMarker(checkpoint.mile_marker_mi)} · ETA ${eta}`,
+      "Click for details",
+    ],
+  };
 }

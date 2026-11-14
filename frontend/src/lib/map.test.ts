@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { boundsOf, fitPadding, selectedRouteId, toLatLng } from "@/lib/map";
-import { TRIP_PLAN } from "@/test/fixtures";
+import {
+  boundsOf,
+  checkpointTooltip,
+  fitPadding,
+  selectedRouteId,
+  toLatLng,
+} from "@/lib/map";
+import { CLEAR_START, TRIP_PLAN, WINDY_MILE_50 } from "@/test/fixtures";
 
 const { routes } = TRIP_PLAN;
 
@@ -61,6 +67,27 @@ describe("fitPadding", () => {
     expect(fitPadding(mapHeightPx)).toEqual({
       paddingTopLeft: [32, 32],
       paddingBottomRight: [32, bottomPx],
+    });
+  });
+});
+
+describe("checkpointTooltip", () => {
+  it("says what the risk is, why, and where and when the truck is there", () => {
+    expect(checkpointTooltip(WINDY_MILE_50)).toEqual({
+      heading: "Severe · wind",
+      lines: [
+        "Wind 48 mph",
+        "Rain 0.12 in/hr",
+        "Mile 50 · ETA Sat, 9:45 AM CST",
+        "Click for details",
+      ],
+    });
+  });
+
+  it("keeps a low-risk checkpoint short", () => {
+    expect(checkpointTooltip(CLEAR_START)).toEqual({
+      heading: "Low risk",
+      lines: ["Mile 0 · ETA Sat, 9:00 AM CST", "Click for details"],
     });
   });
 });

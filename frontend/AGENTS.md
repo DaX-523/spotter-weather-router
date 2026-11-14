@@ -89,8 +89,11 @@ Create a directory when the first module needs it.
 - The truck's ring at the slider's hour is a non-interactive marker under the checkpoint
   markers, so it never hides or blocks a hazard symbol.
 - Every corridor spot that isn't low risk at the slider's hour gets a callout naming its hazard
-  (`hazardsAt` in `lib/corridor.ts`). It floats just above the spot, under the route's markers,
-  and its marker key includes its reason, because Leaflet sets a marker's title only once.
+  (`hazardsAt` in `lib/corridor.ts`). It floats just above the spot, under the route's markers.
+- Signs on the map explain themselves with a Leaflet `Tooltip` on hover or keyboard focus (text
+  from `checkpointTooltip` in `lib/map.ts` and `hazardsAt`), not a `title` attribute: the
+  browser's own hint is slow and would show on top of it. A checkpoint marker gets its
+  accessible name from its HTML instead (`role="img"` and `aria-label`).
 - Open-Meteo's licence (CC BY 4.0) requires credit wherever its data shows: the forecast panel
   links to it. Keep that link if the panel changes.
 - The forecast panel rests folded and peeks open for about a second after each plan

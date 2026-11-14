@@ -167,12 +167,20 @@ describe("hazardsAt", () => {
         level: "high",
         kind: "wind",
         title: "High: Wind 38 mph; Rain 0.12 in/hr",
+        tooltip: {
+          heading: "High · wind",
+          lines: ["Wind 38 mph", "Rain 0.12 in/hr", "Forecast hour: Now"],
+        },
       },
       {
         coordinate: A,
         level: "moderate",
         kind: "rain",
         title: "Moderate: Rain 0.12 in/hr",
+        tooltip: {
+          heading: "Moderate · rain",
+          lines: ["Rain 0.12 in/hr", "Forecast hour: Now"],
+        },
       },
     ]);
   });

@@ -6,6 +6,7 @@ import {
   markerSymbol,
   markerTitle,
   riskColorToken,
+  riskHeading,
   riskLabel,
   riskMiles,
 } from "@/lib/risk";
@@ -75,6 +76,28 @@ describe("markerSymbol", () => {
 
   it("falls back to the unknown symbol when no hazard explains the level", () => {
     expect(markerSymbol({ level: "high", hazards: [] })).toBe("unknown");
+  });
+});
+
+describe("riskHeading", () => {
+  it.each<[string, CheckpointRisk, string]>([
+    ["low-risk", CLEAR_START.risk, "Low risk"],
+    ["windy", WINDY_MILE_50.risk, "Severe · wind"],
+    [
+      "No Travel",
+      {
+        level: "no_travel",
+        hazards: [{ kind: "wind", level: "no_travel", reason: "Wind 58 mph" }],
+      },
+      "No Travel · wind",
+    ],
+    ["forecast-less", UNKNOWN_END.risk, "Unknown · no forecast"],
+  ])("sums up a %s checkpoint in a few words", (_, risk, expected) => {
+    expect(riskHeading(risk)).toBe(expected);
+  });
+
+  it("can join with a comma, for screen readers", () => {
+    expect(riskHeading(WINDY_MILE_50.risk, ", ")).toBe("Severe, wind");
   });
 });
 

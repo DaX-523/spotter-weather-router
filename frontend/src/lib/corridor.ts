@@ -1,14 +1,14 @@
 // The corridor heatmap and its 0-48 h slider. The backend rates every hour; this only labels,
 // sizes and sums up what the map shades. No level is ever changed here.
-import type {
-  Coordinate,
-  Corridor,
-  Hazard,
-  HazardKind,
-  RiskLevel,
-} from "@/lib/api";
+import type { Coordinate, Corridor, HazardKind, RiskLevel } from "@/lib/api";
 import { formatClock } from "@/lib/format";
-import { RISK_LEVELS, markerTitle } from "@/lib/risk";
+import type { MapTooltip } from "@/lib/map";
+import {
+  RISK_LEVELS,
+  decidingHazard,
+  markerTitle,
+  riskHeading,
+} from "@/lib/risk";
 
 /** The owner's slider: from now (hour 0) to 48 hours ahead. */
 export const CORRIDOR_HOURS = 48;
@@ -102,8 +102,10 @@ export type CorridorHazard = {
   level: RiskLevel;
   /** The hazard behind the level; unknown where there is no forecast. */
   kind: HazardKind | "unknown";
-  /** "High: Wind 38 mph; Rain 0.12 in/hr", as a checkpoint's marker says it. */
+  /** "High: Wind 38 mph; Rain 0.12 in/hr", in one line. */
   title: string;
+  /** What hovering its callout on the map says. */
+  tooltip: MapTooltip;
 };
 
 /** The corridor's checkpoints that aren't low risk at an hour, worst first. */
@@ -111,13 +113,19 @@ export function hazardsAt(corridor: Corridor, hour: number): CorridorHazard[] {
   return corridor.points
     .filter((point) => point.levels[hour] !== "low")
     .map((point) => {
-      const level = point.levels[hour];
-      const hazards = point.hazards[hour];
+      const risk = { level: point.levels[hour], hazards: point.hazards[hour] };
       return {
         coordinate: point.coordinate,
-        level,
-        kind: decidingKind(level, hazards),
-        title: markerTitle({ level, hazards }),
+        level: risk.level,
+        kind: decidingHazard(risk),
+        title: markerTitle(risk),
+        tooltip: {
+          heading: riskHeading(risk),
+          lines: [
+            ...risk.hazards.map((hazard) => hazard.reason),
+            `Forecast hour: ${hourOffsetLabel(hour)}`,
+          ],
+        },
       };
     })
     .sort(
@@ -145,14 +153,6 @@ export function hazardCause(
 /** Each distinct reason the corridor isn't low risk at an hour, worst first. */
 export function reasonsAt(corridor: Corridor, hour: number): string[] {
   return [...new Set(hazardsAt(corridor, hour).map(({ title }) => title))];
-}
-
-function decidingKind(
-  level: RiskLevel,
-  hazards: Hazard[],
-): HazardKind | "unknown" {
-  if (level === "unknown") return "unknown";
-  return hazards.find((hazard) => hazard.level === level)?.kind ?? "unknown";
 }
 
 /** "wind", "wind and rain", "wind, rain and snow". */

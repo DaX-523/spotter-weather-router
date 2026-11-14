@@ -50,10 +50,24 @@ export type MarkerSymbol = HazardKind | "no-travel" | "unknown";
 export function markerSymbol(risk: CheckpointRisk): MarkerSymbol | null {
   if (risk.level === "low") return null;
   if (risk.level === "no_travel") return "no-travel";
+  return decidingHazard(risk);
+}
+
+/** The hazard behind a risk's level; unknown where there is no forecast, or where no hazard
+ * explains the level (never a guess). */
+export function decidingHazard(risk: CheckpointRisk): HazardKind | "unknown" {
   if (risk.level === "unknown") return "unknown";
   // The hazard that sets the level, not just the first listed (an unknown reading can tie it).
   const deciding = risk.hazards.find((hazard) => hazard.level === risk.level);
   return deciding?.kind ?? "unknown";
+}
+
+/** A risk and its cause in a few words: "Severe · wind", "Unknown · no forecast", "Low risk". */
+export function riskHeading(risk: CheckpointRisk, separator = " · "): string {
+  if (risk.level === "low") return "Low risk";
+  const kind = decidingHazard(risk);
+  const cause = kind === "unknown" ? "no forecast" : kind;
+  return `${riskLabel(risk.level)}${separator}${cause}`;
 }
 
 /** What a checkpoint's marker says when hovered or read aloud. */

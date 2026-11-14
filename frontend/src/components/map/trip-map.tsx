@@ -32,10 +32,12 @@ import type {
 import { corridorRadiusMeters, hazardsAt } from "@/lib/corridor";
 import {
   boundsOf,
+  checkpointTooltip,
   fitPadding,
   toLatLng,
   type Endpoints,
   type LatLng,
+  type MapTooltip,
 } from "@/lib/map";
 import {
   checkpointMarkerHtml,
@@ -47,8 +49,8 @@ import {
 import {
   RISK_LEVELS,
   markerSymbol,
-  markerTitle,
   riskColorToken,
+  riskHeading,
 } from "@/lib/risk";
 import { isDrivable, routeTooltip } from "@/lib/routes";
 import { themeColor } from "@/lib/theme";
@@ -248,19 +250,19 @@ const CorridorHazards = memo(function CorridorHazards({
   const hazards = useMemo(() => hazardsAt(corridor, hour), [corridor, hour]);
   return hazards.map((hazard) => (
     <Marker
-      // A marker's title is set once, so a new reason gets a new marker.
-      key={`${hazard.coordinate.lat},${hazard.coordinate.lon},${hazard.title}`}
+      key={`${hazard.coordinate.lat},${hazard.coordinate.lon}`}
       position={toLatLng(hazard.coordinate)}
       icon={cachedIcon(
         corridorHazardMarkerHtml(hazard.kind, hazard.level),
         [HAZARD_SIZE_PX, HAZARD_SIZE_PX],
         [HAZARD_SIZE_PX / 2, HAZARD_SIZE_PX + HAZARD_LIFT_PX],
       )}
-      title={hazard.title}
       // The forecast panel lists the same reasons for keyboards and screen readers.
       keyboard={false}
       zIndexOffset={HAZARD_Z_OFFSET}
-    />
+    >
+      <HoverTooltip tooltip={hazard.tooltip} />
+    </Marker>
   ));
 });
 
@@ -332,12 +334,16 @@ function CheckpointMarker({ checkpoint }: { checkpoint: Checkpoint }) {
   const { risk } = checkpoint;
   const symbol = markerSymbol(risk);
   const size = symbol === null ? DOT_SIZE_PX : SYMBOL_SIZE_PX;
+  const label = riskHeading(risk, ", ");
   return (
     <Marker
       position={toLatLng(checkpoint.coordinate)}
-      icon={cachedIcon(checkpointMarkerHtml(symbol, risk.level), [size, size])}
-      title={markerTitle(risk)}
+      icon={cachedIcon(checkpointMarkerHtml(symbol, risk.level, label), [
+        size,
+        size,
+      ])}
     >
+      <HoverTooltip tooltip={checkpointTooltip(checkpoint)} />
       <Popup>
         <CheckpointDetails checkpoint={checkpoint} />
       </Popup>
@@ -382,6 +388,20 @@ function EndpointMarker({
   );
 }
 
+/** A sign's short summary on hover (or keyboard focus): a bold heading, then its lines. */
+function HoverTooltip({ tooltip }: { tooltip: MapTooltip }) {
+  return (
+    <Tooltip direction="top" opacity={1}>
+      <strong className="block">{tooltip.heading}</strong>
+      {tooltip.lines.map((line) => (
+        <span key={line} className="block">
+          {line}
+        </span>
+      ))}
+    </Tooltip>
+  );
+}
+
 // Few distinct markers (symbols × levels, plus the endpoints): build each icon once.
 const icons = new Map<string, DivIcon>();
 
@@ -395,7 +415,9 @@ function cachedIcon(html: string, size: LatLng, anchor?: LatLng): DivIcon {
       className: "",
       iconSize: size,
       iconAnchor: anchor,
-      popupAnchor: anchor ? [0, -size[1]] : [0, -size[1] / 2],
+      // Popups and tooltips open from the icon's top edge.
+      popupAnchor: anchor ? [0, -anchor[1]] : [0, -size[1] / 2],
+      tooltipAnchor: anchor ? [0, -anchor[1]] : [0, -size[1] / 2],
     });
     icons.set(key, icon);
   }

@@ -66,8 +66,9 @@ The line under the recommendation says which of those decided it.
    and the others in grey; a route the driver must not take is dashed.
 2. Hover another route's line: it thickens and its tooltip says how long it is. Click it (or its
    card): it becomes the selected route.
-3. Hover a hazard symbol (wind, rain, snow, a no-entry sign for No Travel, "?" for Unknown), then
-   click one. The popup has the mile marker, ETA, wind, rain, snow and the reasons.
+3. Hover a hazard symbol (wind, rain, snow, a no-entry sign for No Travel, "?" for Unknown): a
+   tooltip sums it up ("Severe · wind", "Wind 48 mph", mile and ETA). Click it: the popup has the
+   mile marker, ETA, wind, rain, snow and the reasons.
 4. Point at the plain green dots: low risk, no symbol.
 5. Click the tab on the map's left edge: the trip panel slides away and the map glides to fill
    the space. Click it again to bring the panel back.
@@ -121,7 +122,7 @@ the weather is calm today, show the rule in `risk.py` instead (next part).
 - `backend/trips/services/plan_trip.py`: the pipeline from routes to checkpoints, ETAs, one
   weather call, risk, recommendation and corridor. Providers come in through `ports.py`, so the
   vendors could be swapped and tests use fakes.
-- Run `make check`: lint, strict types and 566 tests (284 backend, 282 frontend) at 100% coverage.
+- Run `make check`: lint, strict types and 574 tests (284 backend, 290 frontend) at 100% coverage.
   Built test-first. Every edge of the risk table has a test, and the provider adapters are tested
   against stubs of the vendors' documented responses, never the network.
 

@@ -24,15 +24,18 @@ const ICONS: Record<MarkerSymbol, string> = {
 export type Endpoint = "origin" | "destination";
 
 /** A checkpoint: a plain dot where the risk is low, otherwise its symbol on a disc in the
- * level's colour. Hidden from screen readers; the marker's title names the risk. */
+ * level's colour. `label` names the risk for screen readers ("Severe, wind"); its tooltip, which
+ * Leaflet ties to the marker, says the rest. */
 export function checkpointMarkerHtml(
   symbol: MarkerSymbol | null,
   level: RiskLevel,
+  label: string,
 ): string {
+  const named = `role="img" aria-label="${label}"`;
   if (symbol === null) {
-    return '<span class="checkpoint-dot" aria-hidden="true"></span>';
+    return `<span class="checkpoint-dot" ${named}></span>`;
   }
-  return `<span class="risk-marker" data-level="${level}" aria-hidden="true">${ICONS[symbol]}</span>`;
+  return `<span class="risk-marker" data-level="${level}" ${named}>${ICONS[symbol]}</span>`;
 }
 
 /** Where the trip starts (a truck on a disc) and ends (a flag on a pin), as map apps mark them.
