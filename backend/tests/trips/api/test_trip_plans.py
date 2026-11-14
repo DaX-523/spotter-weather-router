@@ -231,3 +231,38 @@ def test_only_post_is_allowed(api_client: APIClient) -> None:
     response = api_client.get(URL)
 
     assert response.status_code == 405
+
+
+def plan_repeatedly(
+    api_client: APIClient, times: int, client_ip: str = "198.51.100.7"
+) -> list[int]:
+    """Status codes of `times` plans from one client, as the proxies forward its address."""
+    return [
+        api_client.post(URL, VALID, format="json", HTTP_X_FORWARDED_FOR=client_ip).status_code
+        for _ in range(times)
+    ]
+
+
+def test_limits_each_client_to_20_plans_an_hour(api_client: APIClient) -> None:
+    statuses = plan_repeatedly(api_client, times=21)
+
+    assert statuses == [200] * 20 + [429]
+
+
+def test_says_when_a_client_over_the_limit_can_plan_again(api_client: APIClient) -> None:
+    plan_repeatedly(api_client, times=20)
+
+    response = api_client.post(URL, VALID, format="json", HTTP_X_FORWARDED_FOR="198.51.100.7")
+
+    assert response.json() == {
+        "detail": "Too many requests from this connection. Try again in 60 min."
+    }
+    assert "Retry-After" in response
+
+
+def test_counts_each_client_on_its_own(api_client: APIClient) -> None:
+    plan_repeatedly(api_client, times=20, client_ip="198.51.100.7")
+
+    other_client = plan_repeatedly(api_client, times=1, client_ip="203.0.113.9")
+
+    assert other_client == [200]

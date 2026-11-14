@@ -16,6 +16,8 @@ from trips.services.plan_trip import plan_trip
 
 
 class TripPlansView(APIView):
+    throttle_scope = "trip_plans"
+
     def post(self, request: Request) -> Response:
         serializer = TripPlanRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -31,6 +33,8 @@ class TripPlansView(APIView):
 
 
 class PlacesView(APIView):
+    throttle_scope = "places"
+
     def get(self, request: Request) -> Response:
         serializer = PlaceQuerySerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)

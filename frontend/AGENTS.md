@@ -48,9 +48,9 @@ Create a directory when the first module needs it.
 ## Data flow
 
 - This is a single-page app. The browser calls our API under `/api/v1`. In development, Vite
-  proxies `/api` to `http://localhost:8000`, so there is one origin and no CORS. `lib/api` builds
-  URLs from `VITE_API_BASE_URL` (empty means same origin). How production serves the two is
-  decided at deploy time.
+  proxies `/api` to `http://localhost:8000`; in production, Vercel rewrites it to the Fly.io app
+  (`vercel.json`). Either way there is one origin and no CORS. `lib/api` builds URLs from
+  `VITE_API_BASE_URL`, which stays empty (same origin).
 - Never call third-party APIs (routing, weather, geocoding) from the browser. They go through the
   backend, which holds the keys. Map tiles are the one exception: their public tile URL and the
   attribution the tile provider's terms require are configured once, in `components/map/`.

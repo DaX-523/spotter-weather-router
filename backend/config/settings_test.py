@@ -11,3 +11,6 @@ from config.settings import *  # noqa: F403
 # Tests talk to fakes. If one ever reaches a real adapter, it fails here instead of calling out.
 TOMTOM_BASE_URL = "https://providers.invalid"
 OPEN_METEO_BASE_URL = "https://providers.invalid"
+
+# The test client speaks plain HTTP; production's redirect to HTTPS would answer every request.
+SECURE_SSL_REDIRECT = False

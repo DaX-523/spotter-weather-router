@@ -48,3 +48,16 @@ def test_a_search_outage_is_explained(
     response = api_client.get(URL, {"query": "Chicago"})
 
     assert response.status_code == 503
+
+
+def search_repeatedly(api_client: APIClient, times: int) -> list[int]:
+    return [api_client.get(URL, {"query": "Chicago"}).status_code for _ in range(times)]
+
+
+def test_limits_each_client_to_60_searches_a_minute(api_client: APIClient) -> None:
+    statuses = search_repeatedly(api_client, times=61)
+
+    assert statuses == [200] * 60 + [429]
+    assert api_client.get(URL, {"query": "Chicago"}).json() == {
+        "detail": "Too many requests from this connection. Try again in 1 min."
+    }

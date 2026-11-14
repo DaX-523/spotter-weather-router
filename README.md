@@ -179,7 +179,42 @@ step decided ("Fewest miles in severe conditions").
 - **Only wind, rain and snow.** Visibility, ice and temperature aren't rated.
 - **Free tiers.** Open-Meteo's free API is for non-commercial use, and OpenStreetMap's tile servers
   aren't for heavy production traffic. The cache is per process and is lost on restart.
-- **Not deployed yet**, and there are no accounts or trip history (both "not now").
+- **One API machine.** Forecasts and rate-limit counts live in its memory, so scaling out would
+  need a shared cache first. There are no accounts or trip history (both "not now").
+
+## Deploy
+
+The frontend runs on Vercel and the API on Fly.io in Chicago (`ord`); the reasons are in
+[`artifacts/INFRA.md`](artifacts/INFRA.md). Vercel forwards `/api/*` to the API, so the browser
+sees one site and needs no CORS or API URL:
+
+```text
+Browser ──> Vercel (static Vite build) ──/api/*──> Fly.io (Django + gunicorn) ──> TomTom, Open-Meteo
+```
+
+1. **API (Fly.io)**, from `backend/` (settings in `fly.toml`, image from `Dockerfile`, server
+   settings in `gunicorn.conf.py`):
+
+   ```sh
+   fly apps create spotter-weather-router   # if the name is taken, see the note in fly.toml
+   fly secrets set DJANGO_SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_urlsafe(50))')" \
+     TOMTOM_API_KEY='<your key>'
+   fly deploy --ha=false   # one machine: forecasts and rate limits live in its memory
+   curl https://spotter-weather-router.fly.dev/health
+   ```
+
+   Redeploy with `fly deploy`. The machine stays running, so no request waits for a cold start.
+2. **Frontend (Vercel).** Import the repository with Root Directory `frontend`. `vercel.json`
+   sets the framework (Vite) and the `/api` rewrite, so no environment variables are needed.
+   Every push to `main` deploys.
+3. **Check** by planning a trip on the Vercel URL. Then run `fly logs`: each request line starts
+   with the client's address as the proxies forwarded it, which the rate limits count by. If it
+   shows only Vercel's address, every visitor would share one limit.
+
+In production the API answers HTTPS only, sends HSTS, and limits each client to 20 trip plans an
+hour and 60 place searches a minute (HTTP 429 with a "Try again in N min" message), so one client
+can't use up the TomTom key's daily quota. `make check` runs Django's deployment checklist
+(`manage.py check --deploy`) against these settings.
 
 ## API
 
@@ -202,7 +237,8 @@ step decided ("Fewest miles in severe conditions").
 //   route: { id, distance_mi, duration_s, arrival_at, polyline[], checkpoints[], risk }
 //   checkpoint: { coordinate, mile_marker_mi, eta, weather, risk: { level, hazards[] }, time_zone }
 // 400 names the field: { "load_weight_lb": ["Load weight can be at most 80,000 lb, the federal limit."] }
-// 404 no truck route · 502 a provider sent something unreadable · 503 a provider isn't responding
+// 404 no truck route · 429 too many requests · 502 a provider sent something unreadable
+// 503 a provider isn't responding
 ```
 
 ## Quality
@@ -214,7 +250,7 @@ make test    # fast feedback, both apps
 make check   # lint, formatting, strict types, and tests with a 90% coverage gate
 ```
 
-- **Backend**: 277 tests, 100% line and branch coverage, Ruff, mypy strict. Every edge in the risk
+- **Backend**: 282 tests, 100% line and branch coverage, Ruff, mypy strict. Every edge in the risk
   table has its own test. Provider adapters are tested against hand-written stubs of each
   vendor's documented responses, through `httpx.MockTransport`; no test touches the network.
 - **Frontend**: 265 tests, 100% coverage, ESLint, Prettier, TypeScript strict. Tests drive the UI

@@ -41,9 +41,9 @@ The MVP persists nothing, so there is no database: planning a trip is a stateles
 When a requirement needs storage, the owner records it in `artifacts/` and PostgreSQL comes in
 then.
 
-CI runs `make check` on every push to `main` and every pull request. Deployment is not decided
-yet. When it is, the owner records it in `artifacts/` and a "Deploy" section goes in the README.
-Production settings live in the host's secret store, never in these files.
+CI runs `make check` on every push to `main` and every pull request. The frontend deploys to
+Vercel and the API to Fly.io (owner's decision: `artifacts/INFRA.md`; steps: README "Deploy").
+Secrets live in Fly's secret store (`fly secrets set`), never in these files.
 
 ## How the system fits together
 

@@ -34,6 +34,14 @@ with `uv add <pkg>` (`uv add --dev <pkg>` for tooling); never use pip or hand-ed
   through `DJANGO_SETTINGS_MODULE`, so a test can never reach a real provider or real data.
 - Only `wiring.py` and the adapters read `django.conf.settings`. The domain and services receive
   what they need as arguments.
+- Production runs on Fly.io behind its HTTPS proxy, with `DJANGO_DEBUG=false`: plain HTTP is
+  redirected and HSTS is sent. `make check` runs `manage.py check --deploy` against the runtime
+  settings with production-like values (`make check-deploy-settings`), so a setting that is unsafe
+  in production fails the gate. A silenced check needs a comment saying why.
+- The server is gunicorn (`gunicorn.conf.py`): **one process** with threads. Forecasts and
+  rate-limit counts live in the local-memory cache, so a second process (or machine) would split
+  them; move them to a shared cache first. `config/wsgi.py` builds the providers at boot, so the
+  time-zone data is loaded before the first request.
 
 ## Structure
 
@@ -91,6 +99,9 @@ Everything lives under `/api/v1`.
   coordinates as `{"lat": …, "lon": …}`.
 - There is no authentication yet. If one becomes a requirement, the owner records it in
   `artifacts/REQUIREMENTS.md` first.
+- Every endpoint that calls a provider is rate-limited per client: the view sets a
+  `throttle_scope`, and the owner's rates are in `REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]`. Over
+  the limit, the API answers 429 with a "Try again in N min" message.
 
 ## External providers
 

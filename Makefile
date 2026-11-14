@@ -2,7 +2,7 @@
 .DEFAULT_GOAL := help
 NODE_MAJOR := 24
 
-.PHONY: help install dev-backend dev-frontend test format check check-backend check-frontend require-node require-env
+.PHONY: help install dev-backend dev-frontend test format check check-backend check-deploy-settings check-frontend require-node require-env
 
 help: ## List available targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  %-15s %s\n", $$1, $$2}'
@@ -29,8 +29,16 @@ check: check-backend check-frontend ## Full quality gate for both apps (must pas
 
 check-backend: ## Backend: lint, format check, type check, Django checks, tests + coverage gate
 	cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy \
-		&& DJANGO_SETTINGS_MODULE=config.settings_test uv run python manage.py check \
-		&& uv run pytest --cov
+		&& DJANGO_SETTINGS_MODULE=config.settings_test uv run python manage.py check
+	@$(MAKE) --no-print-directory check-deploy-settings
+	cd backend && uv run pytest --cov
+
+# Django's deployment checklist against the runtime settings, with production-like values (a
+# throwaway secret, no real key), so a setting that is unsafe in production fails the gate.
+check-deploy-settings:
+	cd backend && DJANGO_SECRET_KEY="$$(uv run python -c 'import secrets; print(secrets.token_urlsafe(50))')" \
+		TOMTOM_API_KEY=check-only DJANGO_DEBUG=false \
+		uv run python manage.py check --deploy --fail-level WARNING
 
 check-frontend: require-node ## Frontend: lint, format check, type check, tests + coverage gate
 	cd frontend && npm run check
