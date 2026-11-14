@@ -1,7 +1,12 @@
+import { TripPlanner } from "@/components/trip-planner/trip-planner";
+
 export function App() {
   return (
-    <main className="mx-auto max-w-5xl p-4">
-      <h1 className="text-2xl font-semibold">Spotter Weather Router</h1>
-    </main>
+    <div className="flex min-h-svh flex-col">
+      <header className="border-b px-4 py-3">
+        <h1 className="text-lg font-semibold">Spotter Weather Router</h1>
+      </header>
+      <TripPlanner />
+    </div>
   );
 }
