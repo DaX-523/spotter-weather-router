@@ -4,27 +4,23 @@ Repo-wide standards live in `../AGENTS.md`. This file adds the backend specifics
 
 ## Stack
 
-Python 3.13 · Django 6.1 · Django REST Framework 3.18 · PostgreSQL (psycopg 3) · httpx (outbound
-HTTP) · uv (dependencies + venv) · pytest + pytest-django + pytest-cov · Ruff (lint + format) ·
-mypy (strict, with `django-stubs` and `djangorestframework-stubs`).
+Python 3.13 · Django 6.1 · Django REST Framework 3.18 · httpx (outbound HTTP) · uv (dependencies
++ venv) · pytest + pytest-django + pytest-cov · Ruff (lint + format) · mypy (strict, with
+`django-stubs` and `djangorestframework-stubs`). No database yet (see `../AGENTS.md`).
 
 ## Commands (run in `backend/`)
 
 ```sh
 uv sync                                              # install dependencies
 uv run python manage.py runserver                    # http://localhost:8000
-uv run python manage.py migrate                      # apply migrations
-uv run python manage.py makemigrations trips --name add_trips   # migration from model changes
 uv run pytest                                        # tests
 uv run pytest --cov                                  # tests + 90% coverage gate
 uv run ruff check --fix . && uv run ruff format .
 uv run mypy
 ```
 
-Full gate: `make check-backend` from the repo root. It also runs `manage.py check` and
-`manage.py makemigrations --check --dry-run`, which fails when models and migrations drift. Add
-packages with `uv add <pkg>` (`uv add --dev <pkg>` for tooling); never use pip or hand-edit
-`uv.lock`.
+Full gate: `make check-backend` from the repo root. It also runs `manage.py check`. Add packages
+with `uv add <pkg>` (`uv add --dev <pkg>` for tooling); never use pip or hand-edit `uv.lock`.
 
 ## Configuration
 
@@ -32,8 +28,7 @@ packages with `uv add <pkg>` (`uv add --dev <pkg>` for tooling); never use pip o
   the environment from environment variables, and from `backend/.env` in development (template:
   `.env.example`). When a required value is missing, startup stops with a message that names the
   variable. `DEBUG` defaults to off.
-- Secrets (`DJANGO_SECRET_KEY`, `DATABASE_URL`, provider API keys) are never hard-coded,
-  committed or logged.
+- Secrets (`DJANGO_SECRET_KEY`, `TOMTOM_API_KEY`) are never hard-coded, committed or logged.
 - `config/settings_test.py` imports the runtime settings and overrides what tests need: no
   `.env`, no real provider keys, a local-memory cache and a fast password hasher. pytest uses it
   through `DJANGO_SETTINGS_MODULE`, so a test can never reach a real provider or real data.
@@ -65,7 +60,6 @@ tests/             mirrors the apps: trips/services/plan_trip.py ↔ tests/trips
   conftest.py      shared fixtures, including the API client with fakes wired in
   fakes.py         in-memory fakes for every port, plus make_* builders for domain objects
   fixtures/        recorded provider responses, one folder per vendor
-  integration/     tests that need PostgreSQL (`@pytest.mark.django_db`)
 ```
 
 Create a directory when the first module needs it. Don't add empty layers, and don't create a
@@ -118,6 +112,10 @@ Everything lives under `/api/v1`.
 
 ## Data model and migrations (once something is persisted)
 
+Nothing is persisted today. When a requirement adds storage, add PostgreSQL, an `integration/`
+test folder marked `@pytest.mark.django_db`, and `makemigrations --check --dry-run` in the gate,
+and follow these rules:
+
 - `models.py` is the source of truth for the schema, and every change ships with a migration.
   Generate it with `makemigrations --name <describe_change>`, then read and fix it.
 - Never edit a migration that has been applied anywhere; add a new one. Every migration can be
@@ -149,11 +147,10 @@ Everything lives under `/api/v1`.
 ## Writing tests
 
 - Most tests are plain unit tests of the domain and services, using the fakes from
-  `tests/fakes.py`: no HTTP and no database. pytest-django blocks database access unless a test is
-  marked `django_db`, so a stray query fails the test instead of slowing the suite.
+  `tests/fakes.py`, with no HTTP involved.
 - Use DRF's `APIClient` through the `api_client` fixture to test the API contract: status codes,
-  response bodies, validation errors (400) and error mapping (404, 409, 502, 503). The fixture
-  serves the real URLs with fakes wired in.
+  response bodies, validation errors (400) and error mapping (502, 503). The fixture serves the
+  real URLs with fakes wired in.
 - Swap collaborators only at the wiring seam (the `api_client` fixture), or by passing fakes into a
   service. Never patch services, domain code or httpx. Prefer simple in-memory fakes to
   `unittest.mock` chains.
@@ -161,8 +158,6 @@ Everything lives under `/api/v1`.
   `httpx.MockTransport`: no network, and every run is identical. Cover success, empty results,
   timeouts, non-2xx and malformed bodies. When recording a new fixture, strip API keys and
   personal data from it.
-- Database behaviour (constraints, migrations, queries, repositories) is tested in
-  `tests/integration/` with `@pytest.mark.django_db`.
 - Table-drive edge cases with `@pytest.mark.parametrize(..., ids=[...])`, using ids that name each
   case. Every threshold gets cases at, just under and just over its boundary.
 - Fixtures belong in the nearest `conftest.py`. Keep them small and explicit, with no module-level

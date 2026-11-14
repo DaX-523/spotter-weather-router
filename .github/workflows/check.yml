@@ -1,0 +1,28 @@
+# The same quality gate as `make check`, on every push to main and every pull request.
+name: Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # setup-uv publishes only exact version tags, no moving major tag like v10.
+      - uses: astral-sh/setup-uv@v10.3.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: |
+          (cd backend && uv sync --locked)
+          (cd frontend && npm ci)
+      - run: make check

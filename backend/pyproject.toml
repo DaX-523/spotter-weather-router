@@ -1,0 +1,77 @@
+[project]
+name = "spotter-weather-router-backend"
+version = "0.1.0"
+description = "Trip planning API: truck routes ranked by weather risk"
+requires-python = ">=3.13"
+dependencies = [
+    "django>=6.1.3",
+    "djangorestframework>=3.18.3",
+    "httpx>=0.28.1",
+]
+
+[dependency-groups]
+dev = [
+    "django-stubs[compatible-mypy]>=6.1.2",
+    "djangorestframework-stubs[compatible-mypy]>=3.18.2",
+    "mypy>=2.4.1",
+    "pytest>=9.2.0",
+    "pytest-cov>=7.1.0",
+    "pytest-django>=4.14.0",
+    "ruff>=0.17.5",
+]
+
+[tool.pytest]
+minversion = "9.0"
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = ["-ra", "--import-mode=importlib"]
+# strict_config, strict_markers, strict_xfail, strict_parametrization_ids
+strict = true
+filterwarnings = ["error"]
+DJANGO_SETTINGS_MODULE = "config.settings_test"
+
+[tool.coverage.run]
+source = ["config"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+skip_covered = true
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "\\.\\.\\.$",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E", "W",  # pycodestyle
+    "F",       # pyflakes
+    "I",       # isort
+    "N",       # pep8-naming
+    "B",       # bugbear
+    "UP",      # pyupgrade
+    "SIM",     # simplify
+    "C4",      # comprehensions
+    "RET",     # return statements
+    "PT",      # pytest style
+    "T20",     # no print()
+    "ERA",     # no commented-out code
+    "DJ",      # Django
+    "DTZ",     # no naive datetimes
+    "RUF",     # ruff-specific
+]
+
+[tool.mypy]
+strict = true
+files = ["config", "tests"]
+# tests/ has no __init__.py files; map modules by path so conftest.py names do not clash.
+explicit_package_bases = true
+plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
+
+[tool.django-stubs]
+django_settings_module = "config.settings_test"

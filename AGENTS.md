@@ -9,19 +9,15 @@ you are changing. Every `CLAUDE.md` just imports its sibling `AGENTS.md`, so edi
 
 ## Status
 
-So far only these guides and `artifacts/` exist. The first build task scaffolds both apps to match
-them: the layouts in the stack guides, the tooling configs (Ruff, mypy, pytest, ESLint, Prettier,
-Vitest, both coverage gates), a root `Makefile` with exactly the targets under "Commands", a
-`.gitignore` that keeps `.env` files out, and CI that runs `make check`. Scaffolding tools such
-as `npm create vite` offer to empty a non-empty directory: never let them delete the `AGENTS.md`
-or `CLAUDE.md` files. Rewrite this section once the skeleton is in.
+Both apps are scaffolded with their quality gates. Features are built in small TDD steps, and the
+owner reviews each step before the next one starts.
 
 ## Layout
 
 | Path         | Contents                                                                                |
 | ------------ | --------------------------------------------------------------------------------------- |
 | `frontend/`  | Vite 8, React 19, TypeScript, Tailwind CSS 4, shadcn/ui, TanStack Query 5, Vitest 5     |
-| `backend/`   | Python 3.13, Django 6.1, Django REST Framework 3.18, PostgreSQL, httpx, uv, pytest      |
+| `backend/`   | Python 3.13, Django 6.1, Django REST Framework 3.18, httpx, uv, pytest                  |
 | `artifacts/` | Owner-maintained requirements log and diagrams. **Read-only for agents.**               |
 
 ## Commands (from repo root)
@@ -30,23 +26,23 @@ or `CLAUDE.md` files. Rewrite this section once the skeleton is in.
 make install       # install both apps' dependencies
 make dev-backend   # API on http://localhost:8000
 make dev-frontend  # web app on http://localhost:5173 (proxies /api to the backend)
-make migrate       # apply pending DB migrations
-make migration app=trips name="add trips"  # generate a migration from model changes
 make test          # all tests, fast feedback
 make format        # auto-format and auto-fix lint in both apps
-make check         # lint + format + types + migration drift + tests with coverage gate, both apps
+make check         # lint + format + types + tests with coverage gate, both apps
 ```
 
 The frontend needs Node 24 (`nvm use 24`); uv manages Python for the backend. The backend reads
 its settings from the environment and `backend/.env` (template: `backend/.env.example`):
-`DATABASE_URL`, `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`, and one
-`<PROVIDER>_API_KEY` per external provider. Integration tests need a running PostgreSQL;
-pytest-django creates and drops its own `test_` database, so tests never touch development data.
+`DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS` and `TOMTOM_API_KEY`. Open-Meteo
+needs no key.
 
-CI runs `make check` on every push to `main` and every pull request, against a PostgreSQL
-service. Deployment is not decided yet. When it is, the owner records it in `artifacts/` and a
-"Deploy" section goes in the README. Production settings live in the host's secret store, never
-in these files.
+The MVP persists nothing, so there is no database: planning a trip is a stateless calculation.
+When a requirement needs storage, the owner records it in `artifacts/` and PostgreSQL comes in
+then.
+
+CI runs `make check` on every push to `main` and every pull request. Deployment is not decided
+yet. When it is, the owner records it in `artifacts/` and a "Deploy" section goes in the README.
+Production settings live in the host's secret store, never in these files.
 
 ## How the system fits together
 
@@ -68,6 +64,8 @@ Browser ──> React SPA ──> Django /api/v1 ──> routing provider (candi
 
 ## How we work
 
+- **Test first: red → green → refactor.** Write the failing test, watch it fail for the right
+  reason, make it pass with the simplest code, then clean up with the tests green.
 - **Design before code.** For a new model, endpoint or scoring rule, propose the shape first
   (fields, contract, edge cases) and explain the trade-offs. When the choice is a product
   decision, wait for the owner's call before building.
@@ -77,7 +75,7 @@ Browser ──> React SPA ──> Django /api/v1 ──> routing provider (candi
 - **Reviews separate the essential from the optional.** List must-fix issues and missed edge
   cases first, then optional improvements, each with what it costs. The owner drops suggestions
   that over-engineer the MVP. Don't propose them again.
-- Plan, build in small steps, and run the tests locally after each one.
+- Plan, build in small steps, and run `make check` after each one.
 
 ## Engineering standards
 
@@ -154,11 +152,13 @@ backend. These are requirements, not suggestions.
 
 ### Domain: units, time and coordinates
 
-- **One internal unit system: SI.** Metres, seconds, kilograms, metres per second, degrees
-  Celsius, millimetres of precipitation. Provider adapters convert into SI and the UI converts
-  for display, so arithmetic only ever happens in SI. Display units are a product decision.
-- **Put the unit in the name** wherever the type doesn't carry it: `distance_m`, `duration_s`,
-  `gross_weight_kg`, `wind_speed_ms`. The same names are used on the wire.
+- **US units everywhere.** The app is for US drivers, so the code, the API and the UI all use
+  miles, pounds, degrees Fahrenheit, miles per hour and inches of precipitation. Metric is a "not
+  now" in `artifacts/REQUIREMENTS.md`. Provider adapters convert vendor units at the edge (TomTom
+  speaks metres and kilograms), so arithmetic only ever happens in US units.
+- **Put the unit in the name** wherever the type doesn't carry it: `distance_mi`, `duration_s`,
+  `load_weight_lb`, `wind_speed_mph`, `temperature_f`, `precipitation_in`. The same names are
+  used on the wire.
 - **Floats are fine here, but float equality is not.** Compare computed values with an explicit
   tolerance (`pytest.approx`, `toBeCloseTo`), and round for display to a named precision.
 - **Time is timezone-aware and stored in UTC** (`USE_TZ = True`). It travels as ISO 8601 with an
