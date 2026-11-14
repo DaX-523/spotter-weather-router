@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
-from trips.domain.timing import end_of_hour, eta_at, nearest_hour
+from trips.domain.timing import end_of_hour, eta_at, nearest_hour, start_of_hour
 
 DEPARTURE = datetime(2026, 11, 14, 8, 0, tzinfo=UTC)
 UTC_MINUS_4 = timezone(timedelta(hours=-4))
@@ -97,7 +97,26 @@ def test_end_of_hour_is_the_end_of_the_hour_the_moment_falls_in(
     assert end_of_hour(moment) == expected_hour
 
 
-@pytest.mark.parametrize("to_hour", [nearest_hour, end_of_hour], ids=["nearest", "end-of-hour"])
+@pytest.mark.parametrize(
+    ("moment", "expected_hour"),
+    [
+        (datetime(2026, 11, 14, 10, 0, tzinfo=UTC), datetime(2026, 11, 14, 10, tzinfo=UTC)),
+        (datetime(2026, 11, 14, 10, 59, 59, tzinfo=UTC), datetime(2026, 11, 14, 10, tzinfo=UTC)),
+        (datetime(2026, 11, 14, 6, 20, tzinfo=UTC_MINUS_4), datetime(2026, 11, 14, 10, tzinfo=UTC)),
+    ],
+    ids=["on-the-hour", "just-before-the-next-hour", "converted-to-utc"],
+)
+def test_start_of_hour_is_the_whole_utc_hour_the_moment_falls_in(
+    moment: datetime, expected_hour: datetime
+) -> None:
+    assert start_of_hour(moment) == expected_hour
+
+
+@pytest.mark.parametrize(
+    "to_hour",
+    [nearest_hour, end_of_hour, start_of_hour],
+    ids=["nearest", "end-of-hour", "start-of-hour"],
+)
 def test_hour_lookups_need_a_moment_with_a_timezone(
     to_hour: Callable[[datetime], datetime],
 ) -> None:

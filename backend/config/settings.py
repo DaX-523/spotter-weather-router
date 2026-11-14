@@ -39,4 +39,15 @@ REST_FRAMEWORK = {
     "UNAUTHENTICATED_USER": None,
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
+    "EXCEPTION_HANDLER": "config.exception_handler.handle_exception",
 }
+
+# Forecasts are cached in process memory (see trips/adapters/cached_weather.py).
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
+# Providers. Open-Meteo needs no key.
+TOMTOM_API_KEY = required_env("TOMTOM_API_KEY")
+TOMTOM_BASE_URL = os.environ.get("TOMTOM_BASE_URL", "https://api.tomtom.com")
+OPEN_METEO_BASE_URL = os.environ.get("OPEN_METEO_BASE_URL", "https://api.open-meteo.com")
+# Every outbound call gives up after this long, and the driver is asked to try again.
+PROVIDER_TIMEOUT_S = 10

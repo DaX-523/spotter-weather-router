@@ -6,6 +6,14 @@ class DomainError(Exception):
     """Base class: the message is safe to show to drivers."""
 
 
+class InvalidInputError(DomainError):
+    """The trip request breaks a business rule. `field` names the input the driver should fix."""
+
+    def __init__(self, field: str, message: str) -> None:
+        super().__init__(message)
+        self.field = field
+
+
 class NotFoundError(DomainError):
     pass
 

@@ -37,6 +37,11 @@ def end_of_hour(moment: datetime) -> datetime:
     return hour if utc_moment == hour else hour + ONE_HOUR
 
 
+def start_of_hour(moment: datetime) -> datetime:
+    """The whole UTC hour that `moment` falls in."""
+    return _utc_and_hour_start(moment)[1]
+
+
 def _utc_and_hour_start(moment: datetime) -> tuple[datetime, datetime]:
     if moment.tzinfo is None:
         raise ValueError("Time must include a timezone")
