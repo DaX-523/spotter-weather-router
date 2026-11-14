@@ -1,14 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import type { RiskLevel } from "@/lib/api";
+import type { Corridor, Hazard, HazardKind, RiskLevel } from "@/lib/api";
 import {
   CORRIDOR_HOURS,
   corridorPeak,
   corridorRadiusMeters,
   forecastHourLabel,
+  hazardCause,
+  hazardsAt,
   hourOffsetLabel,
   hourlyWorst,
   levelCounts,
+  reasonsAt,
   sliderHour,
   worstLevel,
 } from "@/lib/corridor";
@@ -121,5 +124,127 @@ describe("corridorPeak", () => {
       level: "low",
       hour: 0,
     });
+  });
+});
+
+const A = { lat: 40, lon: -90 };
+const B = { lat: 41, lon: -91 };
+const RAIN: Hazard = {
+  kind: "rain",
+  level: "moderate",
+  reason: "Rain 0.12 in/hr",
+};
+const WIND: Hazard = { kind: "wind", level: "high", reason: "Wind 38 mph" };
+
+/** A corridor with one hour, 0, and these points' levels and hazards. */
+function oneHour(
+  ...points: { coordinate?: typeof A; level: RiskLevel; hazards: Hazard[] }[]
+): Corridor {
+  return {
+    start_at: START,
+    points: points.map(({ coordinate = A, level, hazards }) => ({
+      coordinate,
+      levels: [level],
+      hazards: [hazards],
+    })),
+  };
+}
+
+describe("hazardsAt", () => {
+  it("is empty when every checkpoint is low risk", () => {
+    expect(hazardsAt(TRIP_PLAN.corridor, 0)).toEqual([]);
+  });
+
+  it("says what makes each risky checkpoint so, worst first", () => {
+    const corridor = oneHour(
+      { coordinate: A, level: "moderate", hazards: [RAIN] },
+      { coordinate: B, level: "high", hazards: [WIND, RAIN] },
+    );
+
+    expect(hazardsAt(corridor, 0)).toEqual([
+      {
+        coordinate: B,
+        level: "high",
+        kind: "wind",
+        title: "High: Wind 38 mph; Rain 0.12 in/hr",
+      },
+      {
+        coordinate: A,
+        level: "moderate",
+        kind: "rain",
+        title: "Moderate: Rain 0.12 in/hr",
+      },
+    ]);
+  });
+
+  it("names the hazard behind No Travel, not just the level", () => {
+    const corridor = oneHour({
+      level: "no_travel",
+      hazards: [{ kind: "wind", level: "no_travel", reason: "Wind 58 mph" }],
+    });
+
+    expect(hazardsAt(corridor, 0)[0].kind).toBe("wind");
+  });
+
+  it("shows a level its reasons don't explain as unknown, never a guessed hazard", () => {
+    const corridor = oneHour({ level: "high", hazards: [] });
+
+    expect(hazardsAt(corridor, 0)[0].kind).toBe("unknown");
+  });
+
+  it("marks a missing forecast as unknown", () => {
+    const corridor = oneHour({
+      level: "unknown",
+      hazards: [{ kind: "wind", level: "unknown", reason: "No wind forecast" }],
+    });
+
+    expect(hazardsAt(corridor, 0)[0].kind).toBe("unknown");
+  });
+});
+
+describe("hazardCause", () => {
+  it.each<[HazardKind[], string]>([
+    [["wind"], "wind"],
+    [["rain", "wind"], "wind and rain"],
+    [["snow", "rain", "wind"], "wind, rain and snow"],
+  ])("puts hazards %o into words: %s", (kinds, expected) => {
+    const corridor = oneHour(
+      ...kinds.map((kind) => ({
+        level: "high" as const,
+        hazards: [{ kind, level: "high" as const, reason: "" }],
+      })),
+    );
+
+    expect(hazardCause(corridor, 0, "high")).toBe(expected);
+  });
+
+  it("counts only the hazards at that level", () => {
+    const corridor = oneHour({ level: "high", hazards: [WIND, RAIN] });
+
+    expect(hazardCause(corridor, 0, "high")).toBe("wind");
+  });
+
+  it("calls a missing forecast what it is", () => {
+    const corridor = oneHour({
+      level: "unknown",
+      hazards: [{ kind: "wind", level: "unknown", reason: "No wind forecast" }],
+    });
+
+    expect(hazardCause(corridor, 0, "unknown")).toBe("no forecast");
+  });
+});
+
+describe("reasonsAt", () => {
+  it("lists each reason once, worst first", () => {
+    const corridor = oneHour(
+      { coordinate: A, level: "moderate", hazards: [RAIN] },
+      { coordinate: B, level: "moderate", hazards: [RAIN] },
+      { coordinate: B, level: "high", hazards: [WIND] },
+    );
+
+    expect(reasonsAt(corridor, 0)).toEqual([
+      "High: Wind 38 mph",
+      "Moderate: Rain 0.12 in/hr",
+    ]);
   });
 });

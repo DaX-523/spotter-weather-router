@@ -28,8 +28,10 @@ recommends a route, with the reasons, on a map with a 0–48 hour weather heatma
 - **A corridor heatmap** with a 0–48 h slider: the forecast risk along every route, hour by hour.
   The slider starts at the minute you plan, so when you leave at once, "Now" is your departure.
   The forecast panel says what the shading means at each hour. Folded, it shows the slider, a
-  timeline of the worst level ahead, and the worst hour as a link that moves the slider there (or
-  that every hour is low risk, so green is all there is to see). The tab on its top edge opens
+  timeline of the worst level ahead, and the worst hour and its cause ("Moderate (rain)") as a
+  link that moves the slider there (or that every hour is low risk, so green is all there is to
+  see). Every shaded spot that isn't green gets a wind, rain or snow callout, and hovering it gives
+  the numbers ("High: Wind 38 mph"). The tab on its top edge opens
   how many checkpoints are at each level and where the truck will be, drawn on the map as a ring
   that moves along the route with the slider. Each new plan briefly peeks the details open, so
   drivers know they are there.
@@ -236,6 +238,7 @@ can't use up the TomTom key's daily quota. `make check` runs Django's deployment
 //          origin_time_zone, destination_time_zone }
 //   route: { id, distance_mi, duration_s, arrival_at, polyline[], checkpoints[], risk }
 //   checkpoint: { coordinate, mile_marker_mi, eta, weather, risk: { level, hazards[] }, time_zone }
+//   corridor: { start_at, points[]: { coordinate, levels[49], hazards[49][] } }
 // 400 names the field: { "load_weight_lb": ["Load weight can be at most 80,000 lb, the federal limit."] }
 // 404 no truck route · 429 too many requests · 502 a provider sent something unreadable
 // 503 a provider isn't responding
@@ -250,10 +253,10 @@ make test    # fast feedback, both apps
 make check   # lint, formatting, strict types, and tests with a 90% coverage gate
 ```
 
-- **Backend**: 282 tests, 100% line and branch coverage, Ruff, mypy strict. Every edge in the risk
+- **Backend**: 284 tests, 100% line and branch coverage, Ruff, mypy strict. Every edge in the risk
   table has its own test. Provider adapters are tested against hand-written stubs of each
   vendor's documented responses, through `httpx.MockTransport`; no test touches the network.
-- **Frontend**: 265 tests, 100% coverage, ESLint, Prettier, TypeScript strict. Tests drive the UI
+- **Frontend**: 282 tests, 100% coverage, ESLint, Prettier, TypeScript strict. Tests drive the UI
   as a user would (roles, labels, keyboard).
 - **CI** runs `make check` on every push to `main` and every pull request.
 

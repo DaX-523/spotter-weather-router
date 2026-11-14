@@ -65,6 +65,8 @@ export type CorridorPoint = {
   coordinate: Coordinate;
   /** One level per hour from the corridor's start: 49 of them, for 0 to 48 h. */
   levels: RiskLevel[];
+  /** Per hour, what makes it more than Low, worst first; empty when it is Low. */
+  hazards: Hazard[][];
 };
 
 /** The heatmap: the risk around every checkpoint, hour by hour, from now to 48 h ahead. */

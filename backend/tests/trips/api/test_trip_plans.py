@@ -101,7 +101,22 @@ def test_rates_the_corridor_hour_by_hour_for_the_heatmap(api_client: APIClient) 
 
     corridor = response.json()["corridor"]
     assert corridor["start_at"] == "2026-11-14T15:00:00Z"
-    assert corridor["points"][0] == {"coordinate": CHICAGO, "levels": ["low"] * 49}
+    assert corridor["points"][0] == {
+        "coordinate": CHICAGO,
+        "levels": ["low"] * 49,
+        "hazards": [[]] * 49,
+    }
+
+
+def test_says_what_makes_the_corridor_risky_each_hour(
+    api_client: APIClient, fake_weather: FakeWeather
+) -> None:
+    fake_weather.readings = lambda _, time: HourlyWeather(time, 38, 0, 0)
+
+    response = api_client.post(URL, VALID, format="json")
+
+    point = response.json()["corridor"]["points"][0]
+    assert point["hazards"][0] == [{"kind": "wind", "level": "high", "reason": "Wind 38 mph"}]
 
 
 def test_compresses_the_plan_for_clients_that_accept_it(api_client: APIClient) -> None:

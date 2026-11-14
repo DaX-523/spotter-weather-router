@@ -29,7 +29,7 @@ import type {
   RiskLevel,
   Route,
 } from "@/lib/api";
-import { corridorRadiusMeters } from "@/lib/corridor";
+import { corridorRadiusMeters, hazardsAt } from "@/lib/corridor";
 import {
   boundsOf,
   fitPadding,
@@ -39,6 +39,7 @@ import {
 } from "@/lib/map";
 import {
   checkpointMarkerHtml,
+  corridorHazardMarkerHtml,
   endpointMarkerHtml,
   truckPositionMarkerHtml,
   type Endpoint,
@@ -73,6 +74,11 @@ const DESTINATION_SIZE: LatLng = [30, 40];
 const ENDPOINT_Z_OFFSET = 1_000;
 const TRUCK_SIZE_PX = 44;
 const TRUCK_Z_OFFSET = -1_000;
+// The callouts naming what makes the shading risky float this far above their spot, under the
+// route's own markers.
+const HAZARD_SIZE_PX = 24;
+const HAZARD_LIFT_PX = 10;
+const HAZARD_Z_OFFSET = -500;
 // The heatmap's own pane, under the routes (overlay pane, 400) and markers (600). `.corridor-pane`
 // in index.css blurs it. Circles keep their level's exact colour: unlike an additive heatmap,
 // overlapping low-risk shading can never add up to look riskier.
@@ -136,6 +142,9 @@ export const TripMap = memo(function TripMap({
               radiusM={corridorRadiusMeters(spacingMi)}
             />
           </Pane>
+        )}
+        {corridor && (
+          <CorridorHazards corridor={corridor} hour={corridorHour} />
         )}
         {/* Alternatives first, so the selected route is drawn on top of them. */}
         {alternatives.map((route) => (
@@ -223,6 +232,34 @@ const CorridorShading = memo(function CorridorShading({
       radius={radiusM}
       pathOptions={styles[point.levels[hour]]}
       interactive={false}
+    />
+  ));
+});
+
+/** Says what the shading means: at every spot that isn't low risk at the hour, a callout with
+ * the hazard's symbol, and its reasons when hovered. */
+const CorridorHazards = memo(function CorridorHazards({
+  corridor,
+  hour,
+}: {
+  corridor: Corridor;
+  hour: number;
+}) {
+  const hazards = useMemo(() => hazardsAt(corridor, hour), [corridor, hour]);
+  return hazards.map((hazard) => (
+    <Marker
+      // A marker's title is set once, so a new reason gets a new marker.
+      key={`${hazard.coordinate.lat},${hazard.coordinate.lon},${hazard.title}`}
+      position={toLatLng(hazard.coordinate)}
+      icon={cachedIcon(
+        corridorHazardMarkerHtml(hazard.kind, hazard.level),
+        [HAZARD_SIZE_PX, HAZARD_SIZE_PX],
+        [HAZARD_SIZE_PX / 2, HAZARD_SIZE_PX + HAZARD_LIFT_PX],
+      )}
+      title={hazard.title}
+      // The forecast panel lists the same reasons for keyboards and screen readers.
+      keyboard={false}
+      zIndexOffset={HAZARD_Z_OFFSET}
     />
   ));
 });

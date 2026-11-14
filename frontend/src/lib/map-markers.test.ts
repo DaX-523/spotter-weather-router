@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   checkpointMarkerHtml,
+  corridorHazardMarkerHtml,
   endpointMarkerHtml,
   truckPositionMarkerHtml,
 } from "@/lib/map-markers";
@@ -74,4 +75,22 @@ describe("truckPositionMarkerHtml", () => {
     expect(marker).toHaveClass("truck-position");
     expect(marker.querySelector("svg")).toHaveClass("lucide-truck");
   });
+});
+
+describe("corridorHazardMarkerHtml", () => {
+  it.each([
+    ["wind", "lucide-wind"],
+    ["rain", "lucide-cloud-rain"],
+    ["snow", "lucide-snowflake"],
+    ["unknown", "lucide-circle-question-mark"],
+  ] as const)(
+    "floats a %s symbol in the level's colour over the shading",
+    (kind, iconClass) => {
+      const marker = render(corridorHazardMarkerHtml(kind, "high"));
+
+      expect(marker).toHaveClass("corridor-hazard");
+      expect(marker).toHaveAttribute("data-level", "high");
+      expect(marker.querySelector("svg")).toHaveClass(iconClass);
+    },
+  );
 });

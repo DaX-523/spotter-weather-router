@@ -9,10 +9,12 @@ import {
   CORRIDOR_HOURS,
   corridorPeak,
   forecastHourLabel,
+  hazardCause,
   hourMoment,
   hourOffsetLabel,
   hourlyWorst,
   levelCounts,
+  reasonsAt,
   sliderHour,
 } from "@/lib/corridor";
 import { RISK_BACKGROUND } from "@/lib/risk";
@@ -34,6 +36,8 @@ const BAR_HEIGHT: Record<RiskLevel, string> = {
 // Open-Meteo's licence (CC BY 4.0) asks for credit wherever its data is shown.
 const WEATHER_SOURCE_URL = "https://open-meteo.com/";
 const DETAILS_ID = "forecast-details";
+// The details list this many reasons, worst first, and count the rest.
+const REASONS_SHOWN = 3;
 
 type Props = {
   corridor: Corridor;
@@ -58,6 +62,7 @@ export function ForecastPanel({
   const timeline = useMemo(() => hourlyWorst(corridor), [corridor]);
   const peak = corridorPeak(timeline);
   const truck = truckPosition(route, hourMoment(corridor.start_at, hour));
+  const reasons = reasonsAt(corridor, hour);
   // Folded, the panel shows the hour, the slider and the outlook; the rest is a tap away. Each
   // new plan peeks it open for a moment, so the driver knows it is there.
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -166,6 +171,27 @@ export function ForecastPanel({
                 </ul>
               </div>
 
+              {reasons.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">
+                    Why at this hour
+                  </p>
+                  <ul
+                    aria-label="Why at this hour"
+                    className="space-y-0.5 text-xs"
+                  >
+                    {reasons.slice(0, REASONS_SHOWN).map((reason) => (
+                      <li key={reason}>{reason}</li>
+                    ))}
+                    {reasons.length > REASONS_SHOWN && (
+                      <li className="text-muted-foreground">
+                        and {reasons.length - REASONS_SHOWN} more
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
+
               <details className="text-xs text-muted-foreground">
                 <summary className="cursor-pointer py-1 font-medium text-foreground">
                   What am I looking at?
@@ -176,6 +202,11 @@ export function ForecastPanel({
                     checkpoint at the hour you pick, rated with the same weather
                     and load rules as the routes. Only green means no checkpoint
                     is above Low at that hour.
+                  </li>
+                  <li>
+                    A symbol floats above each shaded spot that isn&apos;t
+                    green: wind, rain or snow is what makes it risky at that
+                    hour. Hover one for the numbers.
                   </li>
                   <li>
                     The blue ring is where your truck will be at that hour on
@@ -239,7 +270,8 @@ export function ForecastPanel({
         </p>
       ) : (
         <p className="text-xs">
-          Worst in the next 48 h: <RiskBadge level={peak.level} />, first at{" "}
+          Worst in the next 48 h: <RiskBadge level={peak.level} /> (
+          {hazardCause(corridor, peak.hour, peak.level)}), first at{" "}
           <PeakHour
             label={forecastHourLabel(corridor.start_at, peak.hour, timeZone)}
             onShow={hour === peak.hour ? null : () => onChange(peak.hour)}

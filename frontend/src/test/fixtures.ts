@@ -1,4 +1,11 @@
-import type { Checkpoint, Place, Route, RouteRisk, TripPlan } from "@/lib/api";
+import type {
+  Checkpoint,
+  Hazard,
+  Place,
+  Route,
+  RouteRisk,
+  TripPlan,
+} from "@/lib/api";
 import type { TripQuery } from "@/lib/trip-query";
 
 // 15:00 UTC is 9:00 AM in Chicago, the zone the tests run in.
@@ -87,6 +94,12 @@ function route(id: number, overrides: Partial<Route>): Route {
   };
 }
 
+const STORM_WIND: Hazard = {
+  kind: "wind",
+  level: "severe",
+  reason: "Wind 48 mph",
+};
+
 /** Route 1 is fastest but windy, route 2 is recommended, route 3 crosses No Travel conditions. */
 export const TRIP_PLAN: TripPlan = {
   departure_at: "2026-11-14T15:00:00Z",
@@ -137,11 +150,16 @@ export const TRIP_PLAN: TripPlan = {
   corridor: {
     start_at: "2026-11-14T15:00:00Z",
     points: [
-      { coordinate: CHICAGO.coordinate, levels: Array(49).fill("low") },
+      {
+        coordinate: CHICAGO.coordinate,
+        levels: Array(49).fill("low"),
+        hazards: Array(49).fill([]),
+      },
       {
         coordinate: { lat: 41.2, lon: -95.9 },
         // Clear for the first 6 hours, then a storm.
         levels: [...Array(6).fill("low"), ...Array(43).fill("severe")],
+        hazards: [...Array(6).fill([]), ...Array(43).fill([STORM_WIND])],
       },
     ],
   },

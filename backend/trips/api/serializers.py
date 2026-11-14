@@ -113,10 +113,13 @@ class RecommendationSerializer(serializers.Serializer[Any]):
 class CorridorPointSerializer(serializers.Serializer[Any]):
     coordinate = CoordinateSerializer()
     levels = serializers.ListField(child=serializers.CharField())
+    # Per hour, what makes it more than Low; mostly empty, so it costs little on the wire.
+    hazards = serializers.ListField(child=HazardSerializer(many=True))
 
 
 class CorridorSerializer(serializers.Serializer[Any]):
-    """The heatmap: each point's risk level for every hour from `start_at`, 0 to 48 h."""
+    """The heatmap: each point's risk level, and its causes, for every hour from `start_at`, 0 to
+    48 h."""
 
     start_at = serializers.DateTimeField()
     points = CorridorPointSerializer(many=True)

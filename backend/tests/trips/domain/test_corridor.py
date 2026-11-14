@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 from trips.domain.corridor import CORRIDOR_HOURS, corridor_risk
 from trips.domain.geo import Coordinate
-from trips.domain.risk import RiskLevel
+from trips.domain.risk import Hazard, HazardKind, RiskLevel
 from trips.domain.weather import HourlyWeather, PointForecast
 
 START = datetime(2026, 11, 14, 15, tzinfo=UTC)
@@ -63,3 +63,17 @@ def test_keeps_one_entry_per_point() -> None:
     corridor = corridor_risk({POINT: forecast(49), other: forecast(49)}, START, LIGHT_LOAD_LB)
 
     assert [point.coordinate for point in corridor.points] == [POINT, other]
+
+
+def test_says_what_makes_each_hour_risky() -> None:
+    hours = tuple(
+        HourlyWeather(START + timedelta(hours=offset), 38 if offset == 2 else 5, 0, 0)
+        for offset in range(49)
+    )
+
+    hazards = (
+        corridor_risk({POINT: PointForecast(POINT, hours)}, START, LIGHT_LOAD_LB).points[0].hazards
+    )
+
+    assert hazards[:3] == ((), (), (Hazard(HazardKind.WIND, RiskLevel.HIGH, "Wind 38 mph"),))
+    assert len(hazards) == 49
