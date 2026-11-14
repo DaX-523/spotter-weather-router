@@ -25,6 +25,8 @@ ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
 DATABASES: dict[str, dict[str, str]] = {}
 INSTALLED_APPS = ["rest_framework"]
 MIDDLEWARE = [
+    # A plan carries route lines and 49 hours of corridor risk; it compresses about tenfold.
+    "django.middleware.gzip.GZipMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.common.CommonMiddleware",
 ]

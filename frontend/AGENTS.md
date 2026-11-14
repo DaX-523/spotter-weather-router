@@ -79,6 +79,11 @@ Create a directory when the first module needs it.
 - The map draws on a canvas, which can't read CSS variables. Map colours are still theme tokens:
   `themeColor()` in `lib/theme.ts` resolves them when drawing.
 - Checkpoint popups render app components (`CheckpointDetails`), which are tested like any other.
+- The corridor heatmap is one circle per corridor point, in its level's exact colour, on its own
+  canvas pane that `.corridor-pane` blurs. Don't swap in an additive heatmap such as
+  `leaflet.heat`: overlapping low-risk points would add up and look riskier than they are.
+  Each level's style is a single object, so moving the slider only restyles circles whose level
+  changed, and the map gets the slider's hour through `useDeferredValue`.
 - Checkpoint symbols are Leaflet `divIcon`s built from HTML strings. `lib/map-markers.ts` builds
   them from `lucide-static`: the same icons as `lucide-react`, as SVG strings, imported one by
   one so only those are bundled. Their colours come from `.risk-marker` in `index.css`.

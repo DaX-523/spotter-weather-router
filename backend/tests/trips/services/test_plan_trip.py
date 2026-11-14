@@ -143,17 +143,41 @@ def test_numbers_the_routes_in_the_order_the_provider_gave_them() -> None:
     assert [route.id for route in trip_plan.routes] == [0, 1]
 
 
-def test_fetches_weather_once_for_every_distinct_checkpoint_and_the_hours_they_need() -> None:
+def test_fetches_weather_once_for_every_distinct_checkpoint_for_the_next_48_hours() -> None:
     routing = FakeRouting(result=[NORTHBOUND_ROUTE, NORTHBOUND_ROUTE])
     weather = FakeWeather()
 
     trip_plan = plan(NORTHBOUND, routing=routing, weather=weather)
 
     checkpoints = tuple(checkpoint.coordinate for checkpoint in trip_plan.routes[0].checkpoints)
-    # The last ETA is 10:11:34 the next day; its rain and snow are in the hour ending at 11:00.
+    # Every ETA (the last is 10:11 tomorrow) falls inside the slider's 48 hours.
     assert weather.calls == [
-        WeatherCall(checkpoints, start=NOW, end=datetime(2026, 11, 15, 11, tzinfo=UTC))
+        WeatherCall(checkpoints, start=NOW, end=datetime(2026, 11, 16, 15, tzinfo=UTC))
     ]
+
+
+def test_fetches_further_ahead_when_the_trip_ends_after_48_hours() -> None:
+    weather = FakeWeather()
+    request = replace(NORTHBOUND, departure=NOW + timedelta(hours=48))
+
+    plan(request, routing=FakeRouting(result=[NORTHBOUND_ROUTE]), weather=weather)
+
+    # The last ETA is 10:11:34 on the 17th; its rain and snow are in the hour ending at 11:00.
+    assert (weather.calls[0].start, weather.calls[0].end) == (
+        NOW,
+        datetime(2026, 11, 17, 11, tzinfo=UTC),
+    )
+
+
+def test_rates_the_corridor_around_every_checkpoint_for_the_next_48_hours() -> None:
+    routing = FakeRouting(result=[NORTHBOUND_ROUTE, NORTHBOUND_ROUTE])
+
+    corridor = plan(NORTHBOUND, routing=routing, weather=steady_wind(30)).corridor
+
+    assert corridor.start_at == NOW
+    assert len(corridor.points) == 8
+    assert {len(point.levels) for point in corridor.points} == {49}
+    assert {level for point in corridor.points for level in point.levels} == {RiskLevel.MODERATE}
 
 
 def test_each_checkpoint_gets_the_weather_at_its_eta() -> None:

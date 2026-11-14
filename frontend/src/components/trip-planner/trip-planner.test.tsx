@@ -11,6 +11,7 @@ import {
   type TripQuery,
 } from "@/lib/trip-query";
 import { CHICAGO, DENVER, NOW, TRIP_PLAN, TRIP_QUERY } from "@/test/fixtures";
+import { forecastSlider, queryForecastSlider } from "@/test/queries";
 import { renderWithProviders } from "@/test/render";
 
 vi.mock("@/lib/api", async (importOriginal) => ({
@@ -137,6 +138,29 @@ describe("TripPlanner", () => {
     expect(
       await screen.findByRole("list", { name: "Risk levels" }),
     ).toBeInTheDocument();
+  });
+
+  it("shades the corridor for the hour on the slider, starting now", async () => {
+    vi.mocked(planTrip).mockResolvedValue(TRIP_PLAN);
+    const user = userEvent.setup();
+    visit(TRIP_QUERY);
+    await screen.findByRole("list", { name: "Routes" });
+
+    expect(mapProps()).toMatchObject({
+      corridor: TRIP_PLAN.corridor,
+      corridorHour: 0,
+      spacingMi: 50,
+    });
+    forecastSlider().focus();
+    await user.keyboard("{ArrowRight}");
+
+    await vi.waitFor(() => expect(mapProps()?.corridorHour).toBe(1));
+  });
+
+  it("offers the forecast slider only once there is a plan", () => {
+    visit(null);
+
+    expect(queryForecastSlider()).not.toBeInTheDocument();
   });
 
   it.each([

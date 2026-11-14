@@ -59,11 +59,21 @@ export type Recommendation = {
   reason: string;
 };
 
+export type CorridorPoint = {
+  coordinate: Coordinate;
+  /** One level per hour from the corridor's start: 49 of them, for 0 to 48 h. */
+  levels: RiskLevel[];
+};
+
+/** The heatmap: the risk around every checkpoint, hour by hour, from now to 48 h ahead. */
+export type Corridor = { start_at: string; points: CorridorPoint[] };
+
 export type TripPlan = {
   departure_at: string;
   spacing_mi: number;
   routes: Route[];
   recommendation: Recommendation;
+  corridor: Corridor;
 };
 
 export type TripPlanRequest = {

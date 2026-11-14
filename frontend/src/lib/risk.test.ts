@@ -5,6 +5,7 @@ import {
   RISK_LEVELS,
   markerSymbol,
   markerTitle,
+  riskColorToken,
   riskLabel,
   riskMiles,
 } from "@/lib/risk";
@@ -27,6 +28,19 @@ describe("riskLabel", () => {
       "Severe",
       "No Travel",
       "Unknown",
+    ]);
+  });
+});
+
+describe("riskColorToken", () => {
+  it("names each level's theme colour", () => {
+    expect(RISK_LEVELS.map(riskColorToken)).toEqual([
+      "risk-low",
+      "risk-moderate",
+      "risk-high",
+      "risk-severe",
+      "risk-no-travel",
+      "risk-unknown",
     ]);
   });
 });

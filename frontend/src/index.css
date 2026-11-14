@@ -189,3 +189,9 @@
     @apply font-sans;
   }
 }
+
+/* The corridor heatmap's pane (src/components/map/trip-map.tsx): blurred into a smooth band. */
+.corridor-pane {
+  filter: blur(12px);
+  pointer-events: none;
+}

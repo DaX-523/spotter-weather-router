@@ -1,11 +1,13 @@
 """Plan a trip: up to three truck routes, each with checkpoints, their ETAs, the weather the truck
-will meet there and how risky it is, plus the route to recommend."""
+will meet there and how risky it is, the route to recommend, and the corridor's risk for the
+next 48 hours."""
 
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from trips.domain.checkpoints import Checkpoint, checkpoint_spacing_mi, place_checkpoints
+from trips.domain.corridor import CORRIDOR_HOURS, Corridor, corridor_risk
 from trips.domain.errors import InvalidInputError
 from trips.domain.geo import Coordinate, distance_mi
 from trips.domain.polyline import simplify
@@ -60,6 +62,7 @@ class TripPlan:
     spacing_mi: int
     routes: tuple[PlannedRoute, ...]
     recommendation: Recommendation
+    corridor: Corridor
 
 
 TimedCheckpoints = list[tuple[Checkpoint, datetime]]
@@ -78,7 +81,9 @@ def plan_trip(
     routes = routing.routes(request.origin, request.destination, departure, request.load_weight_lb)
     spacing_mi = checkpoint_spacing_mi(straight_line_mi)
     timed = [_timed_checkpoints(route, spacing_mi, departure) for route in routes]
-    forecasts = _forecasts(weather, timed, departure)
+    # The slider's hour 0. The departure is never earlier, so this also covers every ETA.
+    corridor_start = start_of_hour(now)
+    forecasts = _forecasts(weather, timed, corridor_start)
     planned = tuple(
         _planned_route(index, route, checkpoints, departure, forecasts, request.load_weight_lb)
         for index, (route, checkpoints) in enumerate(zip(routes, timed, strict=True))
@@ -90,6 +95,7 @@ def plan_trip(
         recommendation=recommend(
             [RouteOption(route.id, route.risk, route.duration_s) for route in planned]
         ),
+        corridor=corridor_risk(forecasts, corridor_start, request.load_weight_lb),
     )
 
 
@@ -111,14 +117,16 @@ def _timed_checkpoints(route: Route, spacing_mi: float, departure: datetime) -> 
 
 
 def _forecasts(
-    weather: WeatherProvider, timed: Sequence[TimedCheckpoints], departure: datetime
+    weather: WeatherProvider, timed: Sequence[TimedCheckpoints], corridor_start: datetime
 ) -> dict[Coordinate, PointForecast]:
-    """One request for every distinct checkpoint, covering every hour any ETA needs."""
+    """One request for every distinct checkpoint, covering the slider's 48 hours and every hour
+    any ETA needs, whichever ends later."""
     points = list(
         dict.fromkeys(checkpoint.coordinate for route in timed for checkpoint, _ in route)
     )
     latest_eta = max(eta for route in timed for _, eta in route)
-    forecasts = weather.hourly(points, start_of_hour(departure), end_of_hour(latest_eta))
+    end = max(corridor_start + timedelta(hours=CORRIDOR_HOURS), end_of_hour(latest_eta))
+    forecasts = weather.hourly(points, corridor_start, end)
     return dict(zip(points, forecasts, strict=True))
 
 

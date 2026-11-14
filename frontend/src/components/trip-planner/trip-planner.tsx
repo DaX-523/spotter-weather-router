@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 
 import { TripMap } from "@/components/map";
+import { ForecastSlider } from "@/components/trip-planner/forecast-slider";
 import { PlanStatus } from "@/components/trip-planner/plan-status";
 import { RiskLegend } from "@/components/trip-planner/risk-badge";
 import { RouteList } from "@/components/trip-planner/route-list";
@@ -21,6 +22,9 @@ export function TripPlanner() {
   const trip = useMemo(() => tripRequestFrom(query), [query]);
   const plan = useTripPlan(trip);
   const [chosenRouteId, setChosenRouteId] = useState<number | null>(null);
+  const [forecastHour, setForecastHour] = useState(0);
+  // The slider answers at once; the map catches up when React has a moment.
+  const mapHour = useDeferredValue(forecastHour);
 
   const routes = plan.data?.routes ?? NO_ROUTES;
   const recommendedRouteId = plan.data?.recommendation.route_id ?? null;
@@ -48,11 +52,26 @@ export function TripPlanner() {
         />
         {routes.length > 0 && <RiskLegend />}
       </div>
-      <TripMap
-        routes={routes}
-        selectedRouteId={selected}
-        onSelectRoute={setChosenRouteId}
-      />
+      <div className="relative">
+        <TripMap
+          routes={routes}
+          selectedRouteId={selected}
+          onSelectRoute={setChosenRouteId}
+          corridor={plan.data?.corridor ?? null}
+          corridorHour={mapHour}
+          spacingMi={plan.data?.spacing_mi ?? 0}
+        />
+        {plan.data && (
+          // Above Leaflet's panes and controls (z-index up to 1000).
+          <div className="absolute inset-x-3 bottom-6 z-[1001] md:right-auto md:w-96">
+            <ForecastSlider
+              startAt={plan.data.corridor.start_at}
+              hour={forecastHour}
+              onChange={setForecastHour}
+            />
+          </div>
+        )}
+      </div>
     </main>
   );
 }

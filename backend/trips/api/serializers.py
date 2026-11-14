@@ -102,11 +102,24 @@ class RecommendationSerializer(serializers.Serializer[Any]):
     reason = serializers.CharField()
 
 
+class CorridorPointSerializer(serializers.Serializer[Any]):
+    coordinate = CoordinateSerializer()
+    levels = serializers.ListField(child=serializers.CharField())
+
+
+class CorridorSerializer(serializers.Serializer[Any]):
+    """The heatmap: each point's risk level for every hour from `start_at`, 0 to 48 h."""
+
+    start_at = serializers.DateTimeField()
+    points = CorridorPointSerializer(many=True)
+
+
 class TripPlanSerializer(serializers.Serializer[Any]):
     departure_at = serializers.DateTimeField()
     spacing_mi = serializers.IntegerField()
     routes = RouteSerializer(many=True)
     recommendation = RecommendationSerializer()
+    corridor = CorridorSerializer()
 
 
 class PlaceQuerySerializer(StrictSerializer):

@@ -127,4 +127,15 @@ export const TRIP_PLAN: TripPlan = {
     }),
   ],
   recommendation: { route_id: 1, reason: "Fewest miles in severe conditions" },
+  corridor: {
+    start_at: "2026-11-14T15:00:00Z",
+    points: [
+      { coordinate: CHICAGO.coordinate, levels: Array(49).fill("low") },
+      {
+        coordinate: { lat: 41.2, lon: -95.9 },
+        // Clear for the first 6 hours, then a storm.
+        levels: [...Array(6).fill("low"), ...Array(43).fill("severe")],
+      },
+    ],
+  },
 };

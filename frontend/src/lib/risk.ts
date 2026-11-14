@@ -39,6 +39,11 @@ export function riskLabel(level: RiskLevel): string {
   return LABELS[level];
 }
 
+/** The theme token (index.css) for drawing code that resolves colours itself: the map. */
+export function riskColorToken(level: RiskLevel): string {
+  return `risk-${level.replace("_", "-")}`;
+}
+
 /** The map symbol for a checkpoint, or null for a plain low-risk dot. */
 export type MarkerSymbol = HazardKind | "no-travel" | "unknown";
 
