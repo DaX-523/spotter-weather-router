@@ -31,7 +31,7 @@ filterwarnings = ["error"]
 DJANGO_SETTINGS_MODULE = "config.settings_test"
 
 [tool.coverage.run]
-source = ["config"]
+source = ["config", "trips"]
 branch = true
 
 [tool.coverage.report]
@@ -68,7 +68,7 @@ select = [
 
 [tool.mypy]
 strict = true
-files = ["config", "tests"]
+files = ["config", "trips", "tests"]
 # tests/ has no __init__.py files; map modules by path so conftest.py names do not clash.
 explicit_package_bases = true
 plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
