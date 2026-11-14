@@ -42,6 +42,12 @@
   --color-map-route: var(--map-route);
   --color-map-route-alternative: var(--map-route-alternative);
   --color-map-checkpoint: var(--map-checkpoint);
+  --color-risk-low: var(--risk-low);
+  --color-risk-moderate: var(--risk-moderate);
+  --color-risk-high: var(--risk-high);
+  --color-risk-severe: var(--risk-severe);
+  --color-risk-no-travel: var(--risk-no-travel);
+  --color-risk-unknown: var(--risk-unknown);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -88,6 +94,13 @@
   --map-route: oklch(0.55 0.2 262);
   --map-route-alternative: oklch(0.62 0.04 262);
   --map-checkpoint: oklch(1 0 0);
+  /* Risk levels, from green to near-black, like road and traffic maps. Unknown is grey. */
+  --risk-low: oklch(0.63 0.17 149);
+  --risk-moderate: oklch(0.72 0.16 75);
+  --risk-high: oklch(0.65 0.19 47);
+  --risk-severe: oklch(0.55 0.22 27);
+  --risk-no-travel: oklch(0.32 0.12 15);
+  --risk-unknown: oklch(0.6 0.02 260);
 }
 
 .dark {
@@ -125,6 +138,44 @@
   --map-route: oklch(0.7 0.16 262);
   --map-route-alternative: oklch(0.55 0.03 262);
   --map-checkpoint: oklch(0.205 0 0);
+  --risk-low: oklch(0.7 0.17 149);
+  --risk-moderate: oklch(0.78 0.16 75);
+  --risk-high: oklch(0.72 0.18 47);
+  --risk-severe: oklch(0.64 0.22 27);
+  --risk-no-travel: oklch(0.45 0.15 15);
+  --risk-unknown: oklch(0.65 0.02 260);
+}
+
+/* Checkpoint symbols on the map (src/lib/map-markers.ts): an icon on a disc in the level's colour. */
+.risk-marker {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  border-radius: 9999px;
+  color: white;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
+}
+.risk-marker svg {
+  width: 60%;
+  height: 60%;
+}
+.risk-marker[data-level="moderate"] {
+  background: var(--risk-moderate);
+}
+.risk-marker[data-level="high"] {
+  background: var(--risk-high);
+}
+.risk-marker[data-level="severe"] {
+  background: var(--risk-severe);
+}
+.risk-marker[data-level="no_travel"] {
+  background: var(--risk-no-travel);
+}
+.risk-marker[data-level="unknown"] {
+  background: var(--risk-unknown);
 }
 
 @layer base {

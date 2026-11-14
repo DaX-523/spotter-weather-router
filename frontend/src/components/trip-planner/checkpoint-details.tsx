@@ -1,3 +1,4 @@
+import { RiskBadge } from "@/components/trip-planner/risk-badge";
 import type { Checkpoint } from "@/lib/api";
 import {
   formatClock,
@@ -8,7 +9,7 @@ import {
 
 /** What the driver meets at one checkpoint: shown in the map's popup. */
 export function CheckpointDetails({ checkpoint }: { checkpoint: Checkpoint }) {
-  const { weather } = checkpoint;
+  const { weather, risk } = checkpoint;
   const rows = [
     ["ETA", formatClock(checkpoint.eta)],
     ["Wind", formatWind(weather.wind_speed_mph)],
@@ -16,10 +17,13 @@ export function CheckpointDetails({ checkpoint }: { checkpoint: Checkpoint }) {
     ["Snow", formatPerHour(weather.snowfall_in)],
   ];
   return (
-    <div className="space-y-1">
-      <p className="font-medium">
-        {formatMileMarker(checkpoint.mile_marker_mi)}
-      </p>
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-medium">
+          {formatMileMarker(checkpoint.mile_marker_mi)}
+        </p>
+        <RiskBadge level={risk.level} />
+      </div>
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm">
         {rows.map(([term, value]) => (
           <div key={term} className="contents">
@@ -28,6 +32,13 @@ export function CheckpointDetails({ checkpoint }: { checkpoint: Checkpoint }) {
           </div>
         ))}
       </dl>
+      {risk.hazards.length > 0 && (
+        <ul aria-label="Hazards" className="list-disc pl-4 text-sm">
+          {risk.hazards.map((hazard) => (
+            <li key={hazard.kind}>{hazard.reason}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

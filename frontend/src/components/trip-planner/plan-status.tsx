@@ -1,8 +1,9 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ApiError, type TripPlan } from "@/lib/api";
+import { routeName } from "@/lib/routes";
 
 // The fastest route plus two alternatives, when the routing service finds them.
 const EXPECTED_ROUTES = 3;
@@ -48,10 +49,23 @@ export function PlanStatus({ hasTrip, plan }: Props) {
       </p>
     );
   }
-  const { routes, spacing_mi } = plan.data;
+  const { routes, spacing_mi, recommendation } = plan.data;
   return (
     <div role="status" className="space-y-1 text-sm text-muted-foreground">
       {plan.isPlaceholderData && <p>Updating…</p>}
+      {recommendation.route_id === null ? (
+        <Alert variant="destructive">
+          <AlertTitle>No route is safe to drive</AlertTitle>
+          <AlertDescription>{recommendation.reason}</AlertDescription>
+        </Alert>
+      ) : (
+        <p className="text-foreground">
+          <strong>
+            {routeName(routes, recommendation.route_id)} is recommended.
+          </strong>{" "}
+          {recommendation.reason}.
+        </p>
+      )}
       <p>Weather checked every {spacing_mi} mi along each route.</p>
       {routes.length < EXPECTED_ROUTES && (
         <p>

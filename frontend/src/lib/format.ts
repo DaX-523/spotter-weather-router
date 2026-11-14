@@ -7,6 +7,13 @@ const MINUTES_PER_HOUR = 60;
 const wholeNumber = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
 });
+// Wind and precipitation are shown as precisely as the forecast (and the backend's hazard
+// reasons), so a value just under a risk threshold never looks like it is over it.
+const tenths = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
+const inches = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 3,
+});
 const clock = new Intl.DateTimeFormat("en-US", {
   weekday: "short",
   hour: "numeric",
@@ -37,10 +44,10 @@ export function formatClock(iso: string): string {
 }
 
 export function formatWind(mph: number | null): string {
-  return mph === null ? UNKNOWN : `${wholeNumber.format(mph)} mph`;
+  return mph === null ? UNKNOWN : `${tenths.format(mph)} mph`;
 }
 
 /** Rain or snow in the hour the truck is there. */
-export function formatPerHour(inches: number | null): string {
-  return inches === null ? UNKNOWN : `${inches.toFixed(2)} in/hr`;
+export function formatPerHour(amount: number | null): string {
+  return amount === null ? UNKNOWN : `${inches.format(amount)} in/hr`;
 }

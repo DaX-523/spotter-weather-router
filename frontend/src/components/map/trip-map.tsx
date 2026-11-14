@@ -1,10 +1,12 @@
-// The only place that imports Leaflet. Kept thin: every value drawn is computed in @/lib/map.
+// The only place that imports Leaflet. Kept thin: every value drawn is computed in @/lib.
 import "leaflet/dist/leaflet.css";
 
+import { divIcon, type DivIcon } from "leaflet";
 import { memo, useEffect, useMemo } from "react";
 import {
   CircleMarker,
   MapContainer,
+  Marker,
   Polyline,
   Popup,
   TileLayer,
@@ -12,8 +14,11 @@ import {
 } from "react-leaflet";
 
 import { CheckpointDetails } from "@/components/trip-planner/checkpoint-details";
-import type { Checkpoint, Route } from "@/lib/api";
+import type { Checkpoint, RiskLevel, Route } from "@/lib/api";
 import { boundsOf, toLatLng, type LatLng } from "@/lib/map";
+import { markerHtml } from "@/lib/map-markers";
+import { markerSymbol, markerTitle, type MarkerSymbol } from "@/lib/risk";
+import { isDrivable } from "@/lib/routes";
 import { themeColor } from "@/lib/theme";
 
 // The contiguous US, before there is a trip to show.
@@ -25,7 +30,10 @@ const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const TILE_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 const ROUTE_WEIGHT = { selected: 6, alternative: 4 };
-const CHECKPOINT_RADIUS = 6;
+// A route crossing No Travel conditions is drawn dashed: it must not be driven.
+const NOT_DRIVABLE_DASH = "8 8";
+const LOW_RISK_RADIUS = 5;
+const SYMBOL_SIZE_PX = 26;
 
 type Props = {
   routes: Route[];
@@ -108,26 +116,63 @@ const RouteLine = memo(function RouteLine({
       pathOptions={{
         color: themeColor(selected ? "map-route" : "map-route-alternative"),
         weight: selected ? ROUTE_WEIGHT.selected : ROUTE_WEIGHT.alternative,
+        dashArray: isDrivable(route) ? undefined : NOT_DRIVABLE_DASH,
       }}
     />
   );
 });
 
+/** A plain dot where the risk is low; a symbol, like a road hazard sign, everywhere else. */
 function CheckpointMarker({ checkpoint }: { checkpoint: Checkpoint }) {
-  return (
-    <CircleMarker
-      center={toLatLng(checkpoint.coordinate)}
-      radius={CHECKPOINT_RADIUS}
-      pathOptions={{
-        color: themeColor("map-route"),
-        fillColor: themeColor("map-checkpoint"),
-        fillOpacity: 1,
-        weight: 2,
-      }}
-    >
-      <Popup>
-        <CheckpointDetails checkpoint={checkpoint} />
-      </Popup>
-    </CircleMarker>
+  const { risk } = checkpoint;
+  const symbol = markerSymbol(risk);
+  const popup = (
+    <Popup>
+      <CheckpointDetails checkpoint={checkpoint} />
+    </Popup>
   );
+  if (symbol === null) {
+    return (
+      <CircleMarker
+        center={toLatLng(checkpoint.coordinate)}
+        radius={LOW_RISK_RADIUS}
+        pathOptions={{
+          color: themeColor("map-checkpoint"),
+          fillColor: themeColor("risk-low"),
+          fillOpacity: 1,
+          weight: 2,
+        }}
+      >
+        {popup}
+      </CircleMarker>
+    );
+  }
+  return (
+    <Marker
+      position={toLatLng(checkpoint.coordinate)}
+      icon={symbolIcon(symbol, risk.level)}
+      title={markerTitle(risk)}
+    >
+      {popup}
+    </Marker>
+  );
+}
+
+// At most 5 symbols × 6 levels: build each icon once and reuse it.
+const icons = new Map<string, DivIcon>();
+
+function symbolIcon(symbol: MarkerSymbol, level: RiskLevel): DivIcon {
+  const key = `${symbol}:${level}`;
+  let icon = icons.get(key);
+  if (!icon) {
+    icon = divIcon({
+      html: markerHtml(symbol, level),
+      // No class: drop Leaflet's default white box around custom icons.
+      className: "",
+      iconSize: [SYMBOL_SIZE_PX, SYMBOL_SIZE_PX],
+      popupAnchor: [0, -SYMBOL_SIZE_PX / 2],
+    });
+    icons.set(key, icon);
+  }
+  return icon;
 }

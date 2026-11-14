@@ -1,5 +1,5 @@
-"""Plan a trip: up to three truck routes, each with checkpoints, their ETAs and the weather the
-truck will meet there."""
+"""Plan a trip: up to three truck routes, each with checkpoints, their ETAs, the weather the truck
+will meet there and how risky it is, plus the route to recommend."""
 
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -9,6 +9,8 @@ from trips.domain.checkpoints import Checkpoint, checkpoint_spacing_mi, place_ch
 from trips.domain.errors import InvalidInputError
 from trips.domain.geo import Coordinate, distance_mi
 from trips.domain.polyline import simplify
+from trips.domain.ranking import Recommendation, RouteOption, RouteRisk, recommend, route_risk
+from trips.domain.risk import CheckpointRisk, assess_checkpoint
 from trips.domain.routes import Route
 from trips.domain.timing import end_of_hour, eta_at, start_of_hour
 from trips.domain.weather import Conditions, PointForecast, conditions_at
@@ -38,6 +40,7 @@ class PlannedCheckpoint:
     mile_marker_mi: float
     eta: datetime
     conditions: Conditions
+    risk: CheckpointRisk
 
 
 @dataclass(frozen=True)
@@ -48,6 +51,7 @@ class PlannedRoute:
     duration_s: int
     arrival_at: datetime
     checkpoints: tuple[PlannedCheckpoint, ...]
+    risk: RouteRisk
 
 
 @dataclass(frozen=True)
@@ -55,6 +59,7 @@ class TripPlan:
     departure_at: datetime
     spacing_mi: int
     routes: tuple[PlannedRoute, ...]
+    recommendation: Recommendation
 
 
 TimedCheckpoints = list[tuple[Checkpoint, datetime]]
@@ -74,12 +79,16 @@ def plan_trip(
     spacing_mi = checkpoint_spacing_mi(straight_line_mi)
     timed = [_timed_checkpoints(route, spacing_mi, departure) for route in routes]
     forecasts = _forecasts(weather, timed, departure)
+    planned = tuple(
+        _planned_route(index, route, checkpoints, departure, forecasts, request.load_weight_lb)
+        for index, (route, checkpoints) in enumerate(zip(routes, timed, strict=True))
+    )
     return TripPlan(
         departure_at=departure,
         spacing_mi=spacing_mi,
-        routes=tuple(
-            _planned_route(index, route, checkpoints, departure, forecasts)
-            for index, (route, checkpoints) in enumerate(zip(routes, timed, strict=True))
+        routes=planned,
+        recommendation=recommend(
+            [RouteOption(route.id, route.risk, route.duration_s) for route in planned]
         ),
     )
 
@@ -119,20 +128,33 @@ def _planned_route(
     checkpoints: TimedCheckpoints,
     departure: datetime,
     forecasts: dict[Coordinate, PointForecast],
+    load_weight_lb: float,
 ) -> PlannedRoute:
+    planned = tuple(
+        _planned_checkpoint(checkpoint, eta, forecasts[checkpoint.coordinate], load_weight_lb)
+        for checkpoint, eta in checkpoints
+    )
     return PlannedRoute(
         id=route_id,
         polyline=simplify(route.polyline, DISPLAY_TOLERANCE_MI),
         distance_mi=route.distance_mi,
         duration_s=route.duration_s,
         arrival_at=departure + timedelta(seconds=route.duration_s),
-        checkpoints=tuple(
-            PlannedCheckpoint(
-                coordinate=checkpoint.coordinate,
-                mile_marker_mi=checkpoint.mile_marker_mi,
-                eta=eta,
-                conditions=conditions_at(forecasts[checkpoint.coordinate], eta),
-            )
-            for checkpoint, eta in checkpoints
+        checkpoints=planned,
+        risk=route_risk(
+            [(checkpoint.mile_marker_mi, checkpoint.risk.level) for checkpoint in planned]
         ),
+    )
+
+
+def _planned_checkpoint(
+    checkpoint: Checkpoint, eta: datetime, forecast: PointForecast, load_weight_lb: float
+) -> PlannedCheckpoint:
+    conditions = conditions_at(forecast, eta)
+    return PlannedCheckpoint(
+        coordinate=checkpoint.coordinate,
+        mile_marker_mi=checkpoint.mile_marker_mi,
+        eta=eta,
+        conditions=conditions,
+        risk=assess_checkpoint(conditions, load_weight_lb),
     )

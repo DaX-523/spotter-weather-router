@@ -10,6 +10,7 @@ from trips.domain.errors import (
     ProviderResponseError,
     ProviderUnavailableError,
 )
+from trips.domain.weather import HourlyWeather
 
 URL = "/api/v1/trip-plans"
 CHICAGO = {"lat": 41.8781, "lon": -87.6298}
@@ -41,6 +42,45 @@ def test_plans_routes_with_checkpoints_etas_and_weather(api_client: APIClient) -
         "mile_marker_mi": 0.0,
         "eta": "2026-11-14T15:00:00Z",
         "weather": {"wind_speed_mph": 5.0, "rain_in": 0.0, "snowfall_in": 0.0},
+        "risk": {"level": "low", "hazards": []},
+    }
+
+
+def test_rates_each_route_and_recommends_one(api_client: APIClient) -> None:
+    response = api_client.post(URL, VALID, format="json")
+
+    body = response.json()
+    assert body["routes"][0]["risk"] == {
+        "level": "low",
+        "no_travel_mi": 0.0,
+        "severe_mi": 0.0,
+        "high_mi": 0.0,
+        "average_score": 0.0,
+    }
+    assert body["recommendation"] == {"route_id": 0, "reason": "The only route found"}
+
+
+def test_explains_the_hazards_at_each_checkpoint(
+    api_client: APIClient, fake_weather: FakeWeather
+) -> None:
+    fake_weather.readings = lambda _, time: HourlyWeather(time, 48, 0, 0)
+
+    response = api_client.post(URL, VALID | {"load_weight_lb": 35_000}, format="json")
+
+    body = response.json()
+    assert body["routes"][0]["checkpoints"][0]["risk"] == {
+        "level": "no_travel",
+        "hazards": [
+            {
+                "kind": "wind",
+                "level": "no_travel",
+                "reason": "Wind 48 mph with a load over 30,000 lb",
+            }
+        ],
+    }
+    assert body["recommendation"] == {
+        "route_id": None,
+        "reason": "Every route crosses No Travel conditions. Try a later departure.",
     }
 
 

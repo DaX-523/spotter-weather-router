@@ -11,11 +11,36 @@ export type Conditions = {
   snowfall_in: number | null;
 };
 
+/** The owner's risk levels. Unknown means no usable forecast: never safe. */
+export type RiskLevel =
+  "low" | "moderate" | "high" | "severe" | "no_travel" | "unknown";
+
+export type HazardKind = "wind" | "rain" | "snow";
+
+export type Hazard = { kind: HazardKind; level: RiskLevel; reason: string };
+
+export type CheckpointRisk = {
+  level: RiskLevel;
+  /** Worst first; conditions that are low risk are left out. */
+  hazards: Hazard[];
+};
+
 export type Checkpoint = {
   coordinate: Coordinate;
   mile_marker_mi: number;
   eta: string;
   weather: Conditions;
+  risk: CheckpointRisk;
+};
+
+export type RouteRisk = {
+  level: RiskLevel;
+  no_travel_mi: number;
+  severe_mi: number;
+  /** Includes miles whose risk is unknown. */
+  high_mi: number;
+  /** Distance-weighted, from 0 (all low) to 4 (all no travel). */
+  average_score: number;
 };
 
 export type Route = {
@@ -25,12 +50,20 @@ export type Route = {
   arrival_at: string;
   polyline: Coordinate[];
   checkpoints: Checkpoint[];
+  risk: RouteRisk;
+};
+
+export type Recommendation = {
+  /** null when every route crosses No Travel conditions. */
+  route_id: number | null;
+  reason: string;
 };
 
 export type TripPlan = {
   departure_at: string;
   spacing_mi: number;
   routes: Route[];
+  recommendation: Recommendation;
 };
 
 export type TripPlanRequest = {

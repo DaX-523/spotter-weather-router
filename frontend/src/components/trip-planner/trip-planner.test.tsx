@@ -73,7 +73,7 @@ describe("TripPlanner", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows every route on the map with the first one selected", async () => {
+  it("shows every route on the map with the recommended one selected", async () => {
     vi.mocked(planTrip).mockResolvedValue(TRIP_PLAN);
 
     visit(TRIP_QUERY);
@@ -81,8 +81,38 @@ describe("TripPlanner", () => {
 
     expect(mapProps()).toMatchObject({
       routes: TRIP_PLAN.routes,
-      selectedRouteId: 0,
+      selectedRouteId: 1,
     });
+  });
+
+  it("says which route is recommended and why", async () => {
+    vi.mocked(planTrip).mockResolvedValue(TRIP_PLAN);
+
+    visit(TRIP_QUERY);
+    await screen.findByRole("list", { name: "Routes" });
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Route 2 is recommended. Fewest miles in severe conditions.",
+    );
+  });
+
+  it("warns when no route is safe to drive", async () => {
+    vi.mocked(planTrip).mockResolvedValue({
+      ...TRIP_PLAN,
+      recommendation: {
+        route_id: null,
+        reason:
+          "Every route crosses No Travel conditions. Try a later departure.",
+      },
+    });
+
+    visit(TRIP_QUERY);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("No route is safe to drive");
+    expect(alert).toHaveTextContent(
+      "Every route crosses No Travel conditions. Try a later departure.",
+    );
   });
 
   it("highlights the route the driver picks", async () => {
@@ -90,13 +120,23 @@ describe("TripPlanner", () => {
     const user = userEvent.setup();
     visit(TRIP_QUERY);
 
-    await user.click(await screen.findByRole("button", { name: /Route 2/ }));
+    await user.click(await screen.findByRole("button", { name: /Route 3/ }));
 
-    expect(screen.getByRole("button", { name: /Route 2/ })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: /Route 3/ })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
-    expect(mapProps()?.selectedRouteId).toBe(1);
+    expect(mapProps()?.selectedRouteId).toBe(2);
+  });
+
+  it("explains the risk levels", async () => {
+    vi.mocked(planTrip).mockResolvedValue(TRIP_PLAN);
+
+    visit(TRIP_QUERY);
+
+    expect(
+      await screen.findByRole("list", { name: "Risk levels" }),
+    ).toBeInTheDocument();
   });
 
   it.each([

@@ -48,10 +48,12 @@ describe("formatClock", () => {
   });
 });
 
+// As precise as the forecast, like the backend's hazard reasons, so a value just under a risk
+// threshold never looks like it is over it.
 describe("formatWind", () => {
   it.each([
     [5, "5 mph"],
-    [24.6, "25 mph"],
+    [44.6, "44.6 mph"],
     [null, "Unknown"],
   ])("shows %s as %s", (mph, expected) => {
     expect(formatWind(mph)).toBe(expected);
@@ -62,6 +64,8 @@ describe("formatPerHour", () => {
   it.each([
     [0, "0.00 in/hr"],
     [0.12, "0.12 in/hr"],
+    [0.249, "0.249 in/hr"],
+    [1.2, "1.20 in/hr"],
     [null, "Unknown"],
   ])("shows %s as %s", (inches, expected) => {
     expect(formatPerHour(inches)).toBe(expected);

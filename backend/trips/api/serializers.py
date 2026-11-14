@@ -60,11 +60,31 @@ class ConditionsSerializer(serializers.Serializer[Any]):
     snowfall_in = serializers.FloatField(allow_null=True)
 
 
+class HazardSerializer(serializers.Serializer[Any]):
+    kind = serializers.CharField()
+    level = serializers.CharField()
+    reason = serializers.CharField()
+
+
+class CheckpointRiskSerializer(serializers.Serializer[Any]):
+    level = serializers.CharField()
+    hazards = HazardSerializer(many=True)
+
+
 class CheckpointSerializer(serializers.Serializer[Any]):
     coordinate = CoordinateSerializer()
     mile_marker_mi = serializers.FloatField()
     eta = serializers.DateTimeField()
     weather = ConditionsSerializer(source="conditions")
+    risk = CheckpointRiskSerializer()
+
+
+class RouteRiskSerializer(serializers.Serializer[Any]):
+    level = serializers.CharField()
+    no_travel_mi = serializers.FloatField()
+    severe_mi = serializers.FloatField()
+    high_mi = serializers.FloatField()
+    average_score = serializers.FloatField()
 
 
 class RouteSerializer(serializers.Serializer[Any]):
@@ -74,12 +94,19 @@ class RouteSerializer(serializers.Serializer[Any]):
     arrival_at = serializers.DateTimeField()
     polyline = CoordinateSerializer(many=True)
     checkpoints = CheckpointSerializer(many=True)
+    risk = RouteRiskSerializer()
+
+
+class RecommendationSerializer(serializers.Serializer[Any]):
+    route_id = serializers.IntegerField(allow_null=True)
+    reason = serializers.CharField()
 
 
 class TripPlanSerializer(serializers.Serializer[Any]):
     departure_at = serializers.DateTimeField()
     spacing_mi = serializers.IntegerField()
     routes = RouteSerializer(many=True)
+    recommendation = RecommendationSerializer()
 
 
 class PlaceQuerySerializer(StrictSerializer):

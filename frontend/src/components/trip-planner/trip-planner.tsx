@@ -2,15 +2,18 @@ import { useMemo, useState } from "react";
 
 import { TripMap } from "@/components/map";
 import { PlanStatus } from "@/components/trip-planner/plan-status";
+import { RiskLegend } from "@/components/trip-planner/risk-badge";
 import { RouteList } from "@/components/trip-planner/route-list";
 import { TripForm } from "@/components/trip-planner/trip-form";
 import { useTripQuery } from "@/hooks/use-trip-query";
-import { ApiError } from "@/lib/api";
+import { ApiError, type Route } from "@/lib/api";
 import { selectedRouteId } from "@/lib/map";
 import { tripQueryToSearch, tripRequestFrom } from "@/lib/trip-query";
 import { useTripPlan } from "@/queries/trip-plan";
 
+// Stable empties, so the memoised map doesn't redraw when nothing changed.
 const NO_ERRORS = {};
+const NO_ROUTES: Route[] = [];
 
 /** The whole planner: the trip form and route list beside the map. */
 export function TripPlanner() {
@@ -19,8 +22,9 @@ export function TripPlanner() {
   const plan = useTripPlan(trip);
   const [chosenRouteId, setChosenRouteId] = useState<number | null>(null);
 
-  const routes = plan.data?.routes ?? [];
-  const selected = selectedRouteId(routes, chosenRouteId);
+  const routes = plan.data?.routes ?? NO_ROUTES;
+  const recommendedRouteId = plan.data?.recommendation.route_id ?? null;
+  const selected = selectedRouteId(routes, chosenRouteId, recommendedRouteId);
   const serverErrors =
     plan.error instanceof ApiError ? plan.error.fieldErrors : NO_ERRORS;
 
@@ -38,9 +42,11 @@ export function TripPlanner() {
         <PlanStatus hasTrip={trip !== null} plan={plan} />
         <RouteList
           routes={routes}
+          recommendedRouteId={recommendedRouteId}
           selectedRouteId={selected}
           onSelect={setChosenRouteId}
         />
+        {routes.length > 0 && <RiskLegend />}
       </div>
       <TripMap
         routes={routes}

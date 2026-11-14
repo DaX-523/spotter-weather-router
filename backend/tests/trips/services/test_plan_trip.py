@@ -15,6 +15,8 @@ from tests.fakes import (
 )
 from trips.domain.errors import InvalidInputError
 from trips.domain.geo import Coordinate
+from trips.domain.ranking import Recommendation, RouteRisk
+from trips.domain.risk import RiskLevel
 from trips.domain.routes import Route
 from trips.domain.weather import Conditions, HourlyWeather
 from trips.services.plan_trip import TripPlan, TripRequest, plan_trip
@@ -174,3 +176,51 @@ def test_draws_a_simplified_line_but_places_checkpoints_on_the_full_one() -> Non
 
     assert route.polyline == (SOUTH, NORTH)
     assert len(route.checkpoints) == 8
+
+
+def steady_wind(mph: float) -> FakeWeather:
+    return FakeWeather(readings=lambda _, time: HourlyWeather(time, mph, 0, 0))
+
+
+@pytest.mark.parametrize(
+    ("load_lb", "expected"),
+    [(30_000, RiskLevel.SEVERE), (30_001, RiskLevel.NO_TRAVEL)],
+    ids=["30000-lb", "over-30000-lb"],
+)
+def test_rates_each_checkpoint_for_its_weather_and_the_load(
+    load_lb: float, expected: RiskLevel
+) -> None:
+    request = replace(REQUEST, load_weight_lb=load_lb)
+
+    route = plan(request, weather=steady_wind(48)).routes[0]
+
+    assert {checkpoint.risk.level for checkpoint in route.checkpoints} == {expected}
+
+
+def test_rates_each_route_along_its_length() -> None:
+    route = plan(NORTHBOUND, routing=FakeRouting(result=[NORTHBOUND_ROUTE])).routes[0]
+
+    assert route.risk == RouteRisk(
+        level=RiskLevel.LOW, no_travel_mi=0, severe_mi=0, high_mi=0, average_score=0
+    )
+
+
+def test_recommends_the_safer_route_over_the_faster_one() -> None:
+    def snow_west_of_100_5(point: Coordinate, time: datetime) -> HourlyWeather:
+        return HourlyWeather(time, 5, 0, snowfall_in=2.5 if point.lon < -100.5 else 0)
+
+    westward = make_route(
+        polyline=(SOUTH, Coordinate(lat=30.5, lon=-101), NORTH), duration_s=60_000
+    )
+    routing = FakeRouting(result=[westward, NORTHBOUND_ROUTE])
+
+    trip_plan = plan(NORTHBOUND, routing=routing, weather=FakeWeather(snow_west_of_100_5))
+
+    assert trip_plan.routes[0].risk.severe_mi > 0
+    assert trip_plan.recommendation == Recommendation(1, "Fewest miles in severe conditions")
+
+
+def test_recommends_no_route_when_every_route_has_no_travel_conditions() -> None:
+    trip_plan = plan(weather=steady_wind(60))
+
+    assert trip_plan.recommendation.route_id is None

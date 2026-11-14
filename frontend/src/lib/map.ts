@@ -20,11 +20,15 @@ export function boundsOf(routes: Route[]): [LatLng, LatLng] | null {
   ];
 }
 
-/** The route to highlight: the driver's choice while it exists, otherwise the first. */
+/** The route to highlight: the driver's choice while it exists, otherwise the recommended
+ * route, otherwise the first. */
 export function selectedRouteId(
   routes: Route[],
   chosen: number | null,
+  recommended: number | null,
 ): number | null {
-  if (routes.some((route) => route.id === chosen)) return chosen;
+  const exists = (id: number | null) => routes.some((route) => route.id === id);
+  if (exists(chosen)) return chosen;
+  if (exists(recommended)) return recommended;
   return routes[0]?.id ?? null;
 }
